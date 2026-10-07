@@ -82,3 +82,9 @@ def test_corrections_cap_at_one_and_preserve_order() -> None:
     adj = holm([0.9, 0.8])
     assert (adj <= 1).all()
     assert benjamini_hochberg([0.9, 0.8]).tolist() == pytest.approx([0.9, 0.9])
+
+
+def test_degenerate_arms_do_not_crash() -> None:
+    assert diff_means([2.0, 2.0, 2.0], [3.0, 3.0, 3.0]).p_value == 0.0
+    assert diff_means([2.0, 2.0], [2.0, 2.0]).p_value == 1.0
+    assert diff_proportions(0, 100, 0, 100).p_value == pytest.approx(1.0)

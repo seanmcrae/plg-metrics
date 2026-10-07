@@ -128,10 +128,14 @@ def diff_means(control: ArrayLike, treatment: ArrayLike, alpha: float = 0.05) ->
         raise ValueError("both arms need at least two observations")
     vc, vt = c.var(ddof=1) / c.size, t.var(ddof=1) / t.size
     se = float(np.sqrt(vc + vt))
-    dof = (vc + vt) ** 2 / (vc**2 / (c.size - 1) + vt**2 / (t.size - 1))
-    crit = float(stats.t.ppf(1 - alpha / 2, dof))
     diff = float(t.mean() - c.mean())
-    p_value = float(2 * stats.t.sf(abs(diff) / se, dof))
+    if se == 0:  # both arms constant: the difference is known exactly
+        dof, crit = float("inf"), 0.0
+        p_value = 1.0 if diff == 0 else 0.0
+    else:
+        dof = (vc + vt) ** 2 / (vc**2 / (c.size - 1) + vt**2 / (t.size - 1))
+        crit = float(stats.t.ppf(1 - alpha / 2, dof))
+        p_value = float(2 * stats.t.sf(abs(diff) / se, dof))
     rel, rel_lo, rel_hi = _relative(
         float(c.mean()), float(t.mean()), float(np.sqrt(vc)), float(np.sqrt(vt)), crit
     )
