@@ -229,5 +229,18 @@ def power_cmd(
             typer.echo(f"  MDE with {n:>6,} per arm: {mde_n * 100:.2f} pp")
 
 
+@app.command("plots")
+def plots_cmd(
+    data: DataOption = DEFAULT_DATA,
+    out: Annotated[Path, typer.Option(help="Directory for PNG charts.")] = Path("docs/img"),
+    experiment: Annotated[str, typer.Option(help="Experiment for the CI plot.")] = "onboarding_v2",
+) -> None:
+    """Render funnel, retention heatmap, experiment CI, and sequential charts as PNGs."""
+    from plg.plots import render_all  # matplotlib import is deferred: only this command needs it
+
+    for path in render_all(_warehouse(data), out, experiment):
+        typer.echo(f"wrote {path}")
+
+
 if __name__ == "__main__":
     app()
