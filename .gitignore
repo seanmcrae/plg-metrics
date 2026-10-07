@@ -27,3 +27,6 @@ data/synthetic/
 .env.*
 *.pem
 .streamlit/secrets.toml
+
+# static site (regenerate with `make site`)
+/site/

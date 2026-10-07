@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Product brief - plg-metrics{% endblock %}
+{% block content %}
+<section class="wrap prose product">
+  <p class="eyebrow">Product brief &middot; rendered from <a href="{{ repo_url }}/blob/main/docs/PRODUCT.md">docs/PRODUCT.md</a></p>
+{{ product_html | safe }}
+</section>
+{% endblock %}

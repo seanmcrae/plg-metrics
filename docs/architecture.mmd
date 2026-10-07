@@ -1,0 +1,17 @@
+flowchart LR
+    gen["synthetic.py<br/>seeded generator<br/>+ ground truth"] --> pq[("Parquet<br/>users / events / assignments")]
+    pq --> wh["store.Warehouse<br/>DuckDB views"]
+    sql["sql/*.sql<br/>+ funnel query builder"] --> wh
+    wh --> fun["funnel.py"]
+    wh --> ret["retention.py"]
+    wh --> eng["engagement.py"]
+    wh --> act["activation.py"]
+    wh --> exp["experiment.py"]
+    stats["stats/<br/>frequentist, cuped, multiple,<br/>sequential, bayes, power"] --> exp
+    gen --> val["validation.py<br/>multi-seed ground truth"]
+    exp --> val
+    fun & ret & eng & act & exp --> rep["reports.py<br/>plain-text readouts"]
+    fun & ret & exp --> plots["plots.py<br/>matplotlib charts"]
+    rep --> cli["cli.py (typer)"]
+    plots --> dash["dashboard.py (Streamlit)"]
+    rep & plots & val --> site["sitegen/<br/>static site for Pages"]

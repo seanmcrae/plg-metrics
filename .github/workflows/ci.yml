@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: uv sync --extra dev --extra dashboard --locked --python ${{ matrix.python-version }}
+        run: uv sync --extra dev --extra dashboard --extra docs --locked --python ${{ matrix.python-version }}
       - name: Lint
         run: uv run --no-sync ruff check .
       - name: Format check
@@ -31,3 +31,5 @@ jobs:
         run: |
           uv run --no-sync plg generate --out data/synthetic
           uv run --no-sync plg experiment onboarding_v2 --data data/synthetic
+      - name: Site build
+        run: uv run --no-sync plg site --data data/synthetic --out site

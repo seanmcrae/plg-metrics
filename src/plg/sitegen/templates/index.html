@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Open-source &middot; Python 3.11+ &middot; DuckDB + Parquet</p>
+      <h1>A/B readouts that refuse to be misread.</h1>
+      <p class="lede">plg-metrics turns raw product events into ordered funnels, cohort retention, activation candidates, and an experiment readout that checks sample-ratio mismatch first, reduces variance with CUPED, corrects for multiple metrics, and guards against peeking. Every statistic is checked against a synthetic dataset whose true effect is known.</p>
+      <div class="cta">
+        <a class="button" href="#quickstart">Quickstart</a>
+        <a class="button ghost" href="{{ repo_url }}">View on GitHub</a>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <span class="label">Decision on {{ h.primary }}</span>
+        <span class="value">{{ h.decision }}</span>
+        <span class="note">{{ h.units }} enrolled users</span>
+      </div>
+      <div class="stat">
+        <span class="label">CUPED lift (95% CI)</span>
+        <span class="value">{{ h.lift_pp }}</span>
+        <span class="note">{{ h.ci_pp }}; true effect {{ h.truth_pp }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">P(treatment &gt; control)</span>
+        <span class="value">{{ h.prob_better }}</span>
+        <span class="note">Beta(1,1) posterior, baseline {{ h.baseline }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">A/A false positives, 30 daily looks</span>
+        <span class="value">{{ h.naive_fpr }} &rarr; {{ h.msprt_fpr }}</span>
+        <span class="note">naive peeking vs mSPRT, {{ "{:,}".format(peeking.sims) }} sims</span>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <figure class="card hero-chart">
+      <img src="img/experiment_ci.png" alt="Raw and CUPED 95% intervals for each onboarding_v2 metric, with the generator's true effect marked">
+      <figcaption>onboarding_v2 on the bundled synthetic dataset: raw vs CUPED intervals per metric, with the effect the generator actually built in (dashed red).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="quickstart" class="wrap section">
+  <h2>Quickstart</h2>
+  <p>Requires Python 3.11+ and <a href="https://docs.astral.sh/uv/">uv</a>. Everything runs offline; no API keys or external data.</p>
+<pre class="code"><code>git clone {{ repo_url }}.git
+cd plg-metrics
+uv sync --extra dev --locked
+
+uv run plg generate                     # {{ users }} synthetic users -> data/synthetic/
+uv run plg experiment onboarding_v2     # full A/B readout
+uv run plg funnel --by plan             # ordered funnel, 14-day window
+uv run plg retention --mode unbounded   # weekly cohort matrix
+uv run plg activation                   # early behaviors vs week-4 retention
+uv run plg power --baseline 0.29 --mde 0.02 --daily-units 240
+
+make dashboard                          # Streamlit: funnel, retention, experiment tabs
+make site                               # rebuild this site into site/</code></pre>
+</section>
+
+<section id="results" class="wrap section">
+  <h2>Results</h2>
+  <p>Output below was produced by the build that generated this page, on <code>{{ data_label }}</code>.</p>
+
+  <h3>Experiment readout</h3>
+  <p>The readout runs the SRM check before any estimate, prints raw and CUPED estimates side by side, tests the pre-registered primary at alpha and corrects the secondaries as a family, and shows where naive daily peeking would have stopped (look {{ h.naive_stop_look }} of {{ h.looks }}) versus the first stop the always-valid test allows (look {{ h.msprt_stop_look }}).</p>
+<pre class="output"><code>$ plg experiment onboarding_v2
+{{ readout_text }}</code></pre>
+  <figure class="card">
+    <img src="img/sequential.png" alt="Naive fixed-horizon p-value and always-valid mSPRT p-value at each daily look">
+    <figcaption>Naive p-value vs always-valid p-value across daily looks at {{ h.primary }}.</figcaption>
+  </figure>
+
+  <h3>Funnel and retention</h3>
+  <div class="two-col">
+    <figure class="card">
+      <img src="img/funnel.png" alt="Ordered onboarding funnel, users per step">
+      <figcaption>Ordered funnel with a 14-day conversion window.</figcaption>
+    </figure>
+    <figure class="card">
+      <img src="img/retention_heatmap.png" alt="Weekly signup-cohort retention heatmap; unobserved cells are blank">
+      <figcaption>Bounded weekly cohort retention. Cells a cohort has not lived through stay blank.</figcaption>
+    </figure>
+  </div>
+<pre class="output"><code>$ plg funnel --by plan
+{{ funnel_text }}</code></pre>
+
+  <h3>Activation search</h3>
+  <p>Candidate activation rules ranked by F1 against week-4 retention. These are correlations: a shortlist for an experiment, not a causal claim.</p>
+<pre class="output"><code>$ plg activation --top 6
+{{ activation_text }}</code></pre>
+</section>
+
+<section id="validation" class="wrap section">
+  <h2>How evaluation works</h2>
+  <p>The synthetic generator computes each enrolled user's expected outcome under both arms from the same probabilities it samples from, so every dataset carries an analytic true effect. <code>make validate</code> regenerates the dataset under {{ n_seeds }} seeds ({{ users }} users each), runs the full readout, and records whether each interval covers the truth. Nominal coverage is 95%; one Monte Carlo standard error at {{ n_seeds }} seeds is about {{ "%.1f" | format((0.95 * 0.05 / n_seeds) ** 0.5 * 100) }} points.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>metric</th><th>mean true effect</th><th>mean CUPED bias</th><th>raw CI coverage</th><th>CUPED CI coverage</th><th>CUPED SE / raw SE</th><th>power</th></tr></thead>
+    <tbody>
+    {% for r in validation %}
+      <tr><td><code>{{ r.metric }}</code></td><td>{{ r.true_effect }}</td><td>{{ r.bias }}</td><td>{{ r.raw_coverage }}</td><td>{{ r.cuped_coverage }}</td><td>{{ r.se_ratio }}</td><td>{{ r.power }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p>Decisions across seeds: {% for k, v in decisions.items() %}{{ k }} {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}. {{ peeking.describe() }}.</p>
+  <p>Unit tests check every statistic against scipy or hand calculations, CUPED interval coverage by simulation on skewed counts, SRM detection on a generator that drops treatment logs, and that an A/A dataset never produces a SHIP decision.</p>
+</section>
+
+<section id="architecture" class="wrap section">
+  <h2>Architecture</h2>
+  <figure class="card diagram">
+    <img src="img/architecture.svg" alt="Architecture: synthetic generator to Parquet, DuckDB warehouse, analyses, statistics, reports, plots, CLI, dashboard and site">
+  </figure>
+  <details>
+    <summary>Mermaid source</summary>
+<pre class="code"><code>{{ architecture_src }}</code></pre>
+  </details>
+  <h3>Design decisions</h3>
+  <div class="prose">{{ design_html | safe }}</div>
+</section>
+
+<section id="limitations" class="wrap section">
+  <h2>Limitations</h2>
+  <div class="prose">{{ limitations_html | safe }}</div>
+  <p>Problem framing, users, success metrics, trade-offs and the roadmap are in the <a href="product.html">product brief</a>.</p>
+</section>
+{% endblock %}

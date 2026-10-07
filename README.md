@@ -150,16 +150,13 @@ flowchart LR
     wh --> act["activation.py"]
     wh --> exp["experiment.py"]
     stats["stats/<br/>frequentist, cuped, multiple,<br/>sequential, bayes, power"] --> exp
-    fun --> cli["cli.py (typer)"]
-    ret --> cli
-    eng --> cli
-    act --> cli
-    exp --> cli
-    fun --> plots["plots.py"]
-    ret --> plots
-    exp --> plots
+    gen --> val["validation.py<br/>multi-seed ground truth"]
+    exp --> val
+    fun & ret & eng & act & exp --> rep["reports.py<br/>plain-text readouts"]
+    fun & ret & exp --> plots["plots.py<br/>matplotlib charts"]
+    rep --> cli["cli.py (typer)"]
     plots --> dash["dashboard.py (Streamlit)"]
-    plots --> img["docs/img/*.png"]
+    rep & plots & val --> site["sitegen/<br/>static site for Pages"]
 ```
 
 - **Data layer.** `Warehouse` opens a directory of Parquet files as DuckDB views. Analyses run SQL kept in `src/plg/sql/*.sql` with bound `$parameters`; the only SQL assembled in Python is the funnel, whose CTE chain depends on the number of steps, and segment column names, which are validated as identifiers before use.

@@ -186,5 +186,24 @@ def plots_cmd(
         typer.echo(f"wrote {path}")
 
 
+@app.command("site")
+def site_cmd(
+    out: Annotated[Path, typer.Option(help="Output directory for the static site.")] = Path("site"),
+    data: DataOption = DEFAULT_DATA,
+) -> None:
+    """Build the static documentation site (needs the docs extra: uv sync --extra docs)."""
+    try:
+        from plg.sitegen.builder import SiteConfig, build_site
+    except ModuleNotFoundError as exc:
+        typer.echo(f"{exc}; install the docs extra with `uv sync --extra docs`", err=True)
+        raise typer.Exit(code=1) from exc
+    try:
+        paths = build_site(SiteConfig(out_dir=out, data_dir=data))
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"wrote {len(paths)} files to {out}/ (open {out / 'index.html'})")
+
+
 if __name__ == "__main__":
     app()

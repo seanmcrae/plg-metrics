@@ -1754,10 +1754,16 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
+docs = [
+    { name = "jinja2" },
+    { name = "markdown-it-py" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.0" },
+    { name = "jinja2", marker = "extra == 'docs'", specifier = ">=3.1" },
+    { name = "markdown-it-py", marker = "extra == 'docs'", specifier = ">=3.0" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "numpy", specifier = ">=1.26" },
@@ -1771,7 +1777,7 @@ requires-dist = [
     { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.35" },
     { name = "typer", specifier = ">=0.12" },
 ]
-provides-extras = ["dashboard", "dev"]
+provides-extras = ["dashboard", "docs", "dev"]
 
 [[package]]
 name = "pluggy"

@@ -1,10 +1,10 @@
 UV ?= uv
 DATA ?= data/synthetic
 
-.PHONY: install lint format typecheck test data demo plots validate dashboard ci
+.PHONY: install lint format typecheck test data demo plots validate dashboard site diagram ci
 
 install:
-	$(UV) sync --extra dev --locked
+	$(UV) sync --extra dev --extra docs --locked
 
 lint:
 	$(UV) run --no-sync ruff check .
@@ -40,5 +40,13 @@ validate:
 dashboard: data
 	$(UV) sync --extra dev --extra dashboard --locked
 	$(UV) run --no-sync streamlit run src/plg/dashboard.py -- --data $(DATA)
+
+site:
+	$(UV) run --no-sync plg site --data $(DATA) --out site  # generates $(DATA) if missing
+
+# Re-render docs/img/architecture.svg after editing docs/architecture.mmd (needs Node 20+).
+diagram:
+	npx -y @mermaid-js/mermaid-cli@11 -i docs/architecture.mmd -o docs/img/architecture.svg \
+		-c docs/mermaid.json -b white
 
 ci: lint typecheck test
