@@ -1,0 +1,29 @@
+# environments
+.venv/
+venv/
+env/
+node_modules/
+
+# caches and build output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# generated data (regenerate with `make data`)
+data/synthetic/
+*.duckdb
+*.duckdb.wal
+
+# secrets
+.env
+.env.*
+*.pem
+.streamlit/secrets.toml
