@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: uv sync --extra dev --locked --python ${{ matrix.python-version }}
+      - name: Lint
+        run: uv run --no-sync ruff check .
+      - name: Format check
+        run: uv run --no-sync ruff format --check .
+      - name: Type check
+        run: uv run --no-sync mypy
+      - name: Tests
+        run: uv run --no-sync pytest --cov --cov-report=term-missing:skip-covered
+      - name: Demo smoke run
+        run: |
+          uv run --no-sync plg generate --out data/synthetic
+          uv run --no-sync plg experiment onboarding_v2 --data data/synthetic

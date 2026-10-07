@@ -4,8 +4,7 @@ DATA ?= data/synthetic
 .PHONY: install lint format typecheck test data demo plots dashboard ci
 
 install:
-	$(UV) venv --allow-existing
-	$(UV) pip install -e ".[dev]"
+	$(UV) sync --extra dev --locked
 
 lint:
 	$(UV) run --no-sync ruff check .
@@ -27,14 +26,16 @@ data:
 demo: data
 	$(UV) run --no-sync plg funnel --data $(DATA) --by plan
 	$(UV) run --no-sync plg retention --data $(DATA)
+	$(UV) run --no-sync plg engagement --data $(DATA)
+	$(UV) run --no-sync plg activation --data $(DATA)
 	$(UV) run --no-sync plg experiment onboarding_v2 --data $(DATA)
-	$(UV) run --no-sync plg power --baseline 0.30 --mde 0.02
+	$(UV) run --no-sync plg power --baseline 0.29 --mde 0.02 --daily-units 240
 
 plots: data
 	$(UV) run --no-sync plg plots --data $(DATA) --out docs/img
 
 dashboard: data
-	$(UV) pip install -e ".[dashboard]"
+	$(UV) sync --extra dev --extra dashboard --locked
 	$(UV) run --no-sync streamlit run src/plg/dashboard.py -- --data $(DATA)
 
 ci: lint typecheck test
