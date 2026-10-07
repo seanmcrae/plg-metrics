@@ -50,3 +50,16 @@ def test_cuped_with_useless_covariate_changes_little() -> None:
 def test_cuped_shape_mismatch() -> None:
     with pytest.raises(ValueError, match="same shape"):
         cuped_adjust([1.0, 2.0], [1.0])
+
+
+def test_cuped_interval_has_nominal_coverage() -> None:
+    # Skewed count outcome and covariate, like active days vs pre-period pageviews.
+    rng = np.random.default_rng(10)
+    effect, hits, sims = 0.3, 0, 600
+    for _ in range(sims):
+        z = rng.normal(size=(2, 800))
+        x = rng.poisson(np.exp(1.0 + 0.6 * z))
+        y = rng.poisson(np.exp(1.5 + 0.4 * z)).astype(float)
+        y[1] += effect
+        hits += cuped_diff_means(y[0], x[0], y[1], x[1]).estimate.covers(effect)
+    assert 0.93 <= hits / sims <= 0.97
