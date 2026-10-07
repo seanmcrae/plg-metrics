@@ -5,7 +5,7 @@ description = "Product-led-growth analytics over event data: ordered funnels, ac
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Sean Wayne" }]
+authors = [{ name = "Sean McRae" }]
 dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
