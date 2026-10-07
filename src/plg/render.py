@@ -71,9 +71,10 @@ def format_readout(r: Readout, data_label: str) -> str:
                 "control": m.raw.control_mean,
                 "treatment": m.raw.treatment_mean,
                 "raw diff": m.raw.diff,
+                "raw p": m.raw.p_value,
                 "CUPED diff": m.cuped.diff,
                 f"{level} CI": f"[{m.cuped.ci_low:+.4f}, {m.cuped.ci_high:+.4f}]",
-                "p": m.cuped.p_value,
+                "CUPED p": m.cuped.p_value,
                 "p_adj": m.p_adjusted,
                 "var red": m.variance_reduction,
                 "truth": m.true_effect,
@@ -86,8 +87,9 @@ def format_readout(r: Readout, data_label: str) -> str:
             "control": num(),
             "treatment": num(),
             "raw diff": signed(),
+            "raw p": num(),
             "CUPED diff": signed(),
-            "p": num(),
+            "CUPED p": num(),
             "p_adj": num(),
             "var red": pct,
             "truth": signed(),
@@ -115,8 +117,8 @@ def format_readout(r: Readout, data_label: str) -> str:
         "",
         metrics,
         "",
-        f"CUPED covariate: {cfg.covariate}. p_adj: {cfg.correction} across secondary metrics; "
-        "primary tested at alpha.",
+        f"CUPED covariate: {cfg.covariate}; {level} CI is for the CUPED diff. "
+        f"p_adj: {cfg.correction} on CUPED p across secondary metrics; primary tested at alpha.",
         f"Bayesian ({primary.spec.name}, Beta(1,1) prior): "
         f"P(treatment > control) = {r.bayes.prob_treatment_better:.1%}, "
         f"95% credible diff [{r.bayes.diff_ci_low:+.4f}, {r.bayes.diff_ci_high:+.4f}], "

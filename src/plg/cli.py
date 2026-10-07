@@ -6,16 +6,19 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Annotated
 
-import pandas as pd
 import typer
 
-from plg.activation import ActivationSearch, RankBy, search_activation
-from plg.engagement import north_star, stickiness
-from plg.experiment import Correction, ExperimentConfig, analyze, experiment_units
-from plg.experiment import ground_truth_effects as truth_for
-from plg.funnel import DEFAULT_STEPS, FunnelSpec, funnel, time_to_convert
-from plg.render import format_readout, num, pct, table
-from plg.retention import RetentionMode, day_n_retention, retention_matrix
+from plg.activation import RankBy
+from plg.experiment import Correction, ExperimentConfig
+from plg.funnel import DEFAULT_STEPS, FunnelSpec
+from plg.reports import (
+    activation_report,
+    engagement_report,
+    experiment_report,
+    funnel_report,
+    retention_report,
+)
+from plg.retention import RetentionMode
 from plg.stats.power import (
     minimum_detectable_effect,
     sample_size_means,
@@ -40,11 +43,6 @@ def _warehouse(data: Path) -> Warehouse:
     except FileNotFoundError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
-
-
-def _label(wh: Warehouse) -> str:
-    synthetic = " (SYNTHETIC)" if wh.metadata.get("synthetic") else ""
-    return f"{wh.data_dir}{synthetic}"
 
 
 @app.command("generate")
@@ -76,23 +74,10 @@ def funnel_cmd(
     by: Annotated[str | None, typer.Option(help="users column to break down by.")] = None,
 ) -> None:
     """Ordered funnel with a conversion window, optional segment breakdown, and time-to-convert."""
-    wh = _warehouse(data)
     spec = FunnelSpec(
         steps=tuple(s.strip() for s in steps.split(",")), window=timedelta(days=window_days)
     )
-    typer.echo(f"Funnel ({window_days:g}-day window)   data: {_label(wh)}\n")
-    overall = funnel(wh, spec).drop(columns="step_index")
-    typer.echo(table(overall, {"conv_from_start": pct, "conv_from_prev": pct}))
-    if by:
-        seg = funnel(wh, spec, by=by)
-        wide = seg.pivot(index="step_index", columns="segment", values="conv_from_start")
-        wide.insert(0, "step", list(spec.steps))
-        formats = {str(c): pct for c in wide.columns if c != "step"}
-        typer.echo(f"\nConversion from entry by {by}\n")
-        typer.echo(table(wide.reset_index(drop=True), formats))
-    ttc = time_to_convert(wh, spec).drop(columns="step_index")
-    typer.echo("\nHours from entry to step (converters only)\n")
-    typer.echo(table(ttc, {c: num(1) for c in ("mean_hours", "p50", "p75", "p90")}))
+    typer.echo(funnel_report(_warehouse(data), spec, by))
 
 
 @app.command("retention")
@@ -105,19 +90,7 @@ def retention_cmd(
     if mode not in ("bounded", "unbounded"):
         raise typer.BadParameter("mode must be 'bounded' or 'unbounded'")
     retention_mode: RetentionMode = "bounded" if mode == "bounded" else "unbounded"
-    wh = _warehouse(data)
-    m = retention_matrix(wh, retention_mode, max_weeks=weeks)
-    rates = m.rates.copy()
-    rates.columns = [f"w{c}" for c in rates.columns]
-    rates.insert(0, "users", m.cohort_sizes)
-    rates.insert(0, "cohort", [str(pd.Timestamp(i).date()) for i in rates.index])
-    formats = {c: pct for c in rates.columns if c.startswith("w")}
-    typer.echo(f"Weekly cohort retention ({mode})   data: {_label(wh)}\n")
-    typer.echo(table(rates.reset_index(drop=True), formats))
-    curve = m.weighted_curve()
-    typer.echo("\nWeighted: " + "  ".join(f"w{k} {v:.1%}" for k, v in curve.items()))
-    typer.echo("\nDay-N retention\n")
-    typer.echo(table(day_n_retention(wh), {"retention": pct}))
+    typer.echo(retention_report(_warehouse(data), retention_mode, weeks))
 
 
 @app.command("engagement")
@@ -126,18 +99,7 @@ def engagement_cmd(
     min_active_days: Annotated[int, typer.Option(help="Active days/week for the north star.")] = 3,
 ) -> None:
     """DAU/WAU/MAU stickiness and the weekly engaged activated users north star."""
-    wh = _warehouse(data)
-    st = stickiness(wh).dropna(subset=["dau_mau"])
-    weekly = st.groupby(pd.to_datetime(st["day"]).dt.to_period("W-SUN").dt.start_time).agg(
-        dau=("dau", "mean"), wau=("wau", "last"), mau=("mau", "last"), dau_mau=("dau_mau", "mean")
-    )
-    weekly.insert(0, "week", [str(i.date()) for i in weekly.index])
-    typer.echo(f"Stickiness (weekly view)   data: {_label(wh)}\n")
-    typer.echo(table(weekly.reset_index(drop=True), {"dau": num(0), "dau_mau": pct}))
-    ns = north_star(wh, min_active_days=min_active_days)
-    ns["week"] = [str(pd.Timestamp(w).date()) for w in ns["week"]]
-    typer.echo(f"\nNorth star: weekly engaged activated users (>= {min_active_days} active days)\n")
-    typer.echo(table(ns, {"weau_wow": pct, "weau_share_of_wau": pct}))
+    typer.echo(engagement_report(_warehouse(data), min_active_days))
 
 
 @app.command("activation")
@@ -150,24 +112,7 @@ def activation_cmd(
     if rank_by not in ("f1", "lift", "precision"):
         raise typer.BadParameter("rank-by must be f1, lift, or precision")
     order: RankBy = "f1" if rank_by == "f1" else ("lift" if rank_by == "lift" else "precision")
-    wh = _warehouse(data)
-    ranked, base = search_activation(wh, ActivationSearch(rank_by=order))
-    typer.echo(f"Activation search (target: active in days 21-27)   data: {_label(wh)}")
-    typer.echo(f"Base week-4 retention: {base:.1%}\n")
-    cols = ["rule", "coverage", "precision", "retention_without", "recall", "lift", "f1"]
-    typer.echo(
-        table(
-            ranked[cols].head(top),
-            {
-                "coverage": pct,
-                "precision": pct,
-                "retention_without": pct,
-                "recall": pct,
-                "lift": num(2),
-                "f1": num(3),
-            },
-        )
-    )
+    typer.echo(activation_report(_warehouse(data), order, top))
 
 
 @app.command("experiment")
@@ -181,13 +126,12 @@ def experiment_cmd(
         raise typer.BadParameter("correction must be holm or bh")
     corr: Correction = "holm" if correction == "holm" else "bh"
     wh = _warehouse(data)
-    cfg = ExperimentConfig(experiment=name, correction=corr)
     try:
-        units = experiment_units(wh, cfg)
+        report = experiment_report(wh, ExperimentConfig(experiment=name, correction=corr))
     except ValueError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
-    typer.echo(format_readout(analyze(units, cfg, truth_for(wh)), _label(wh)))
+    typer.echo(report)
 
 
 @app.command("power")
