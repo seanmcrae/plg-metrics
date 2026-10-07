@@ -1,16 +1,33 @@
 # plg-metrics
 
-![CI](https://github.com/seanmcrae/plg-metrics/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/seanmcrae/plg-metrics/actions/workflows/ci.yml/badge.svg)](https://github.com/seanmcrae/plg-metrics/actions/workflows/ci.yml)
+[![Docs](https://github.com/seanmcrae/plg-metrics/actions/workflows/pages.yml/badge.svg)](https://seanmcrae.github.io/plg-metrics/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](pyproject.toml)
 
-Product-led-growth analytics over raw event data: ordered funnels with conversion windows, activation-definition search, weekly cohort retention, stickiness, a north-star metric, and an experiment readout that refuses to let you misread an A/B test. It checks sample-ratio mismatch before showing any result, reduces variance with CUPED, corrects for multiple metrics, flags early peeking with an always-valid sequential test, and reports a Bayesian probability to beat control next to the frequentist interval. Everything runs locally on DuckDB over Parquet. The bundled data is a seeded, **synthetic** B2B SaaS event stream with an embedded onboarding experiment whose true effect is known, so the statistics are checked against ground truth rather than taken on faith.
+**A/B readouts that refuse to be misread: funnels, retention, activation search, and experiment analysis on DuckDB + Parquet, with every statistic checked against synthetic ground truth.**
+
+**Live docs:** [seanmcrae.github.io/plg-metrics](https://seanmcrae.github.io/plg-metrics/)
+
+Growth decisions come from a funnel, a retention chart, and an experiment readout, and all three are easy to misread. plg-metrics computes them from raw events with explicit semantics, and its experiment readout checks sample-ratio mismatch before showing any result, reduces variance with CUPED, corrects for multiple metrics, flags early peeking with an always-valid sequential test, and reports a Bayesian probability to beat control next to the frequentist interval. The bundled data is a seeded, **synthetic** B2B SaaS event stream with an embedded onboarding experiment whose true effect is known, so the statistics are verified rather than taken on faith.
+
+## Headline result
+
+On the bundled synthetic dataset (20,000 users, seed 7), the readout ships `onboarding_v2` on its primary metric with a CUPED lift of +2.31 pp (95% CI +0.54 to +4.07 pp) against a true built-in effect of +2.28 pp. On the secondary engagement metric the raw test reports p = 0.033; the CUPED estimate, with 20% less variance, lands closer to the truth and is not significant (p = 0.068, or 0.135 after Holm). Across 100 regenerated seeds, CUPED intervals cover the true effect 92-95% of the time, and in 2,000 simulated A/A tests with 30 daily looks, naive peeking produces false positives 28.4% of the time versus 0.9% for the mSPRT guardrail.
+
+![Raw vs CUPED intervals for each onboarding_v2 metric, with the true effect](docs/img/experiment_ci.png)
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/seanmcrae/plg-metrics.git
-cd plg-metrics
-uv sync --extra dev --locked            # Python 3.11+
+git clone https://github.com/seanmcrae/plg-metrics.git && cd plg-metrics
+make install demo        # uv sync, generate 20,000 synthetic users, run every analysis
+```
 
+Or command by command (Python 3.11+, [uv](https://docs.astral.sh/uv/)):
+
+```bash
+uv sync --extra dev --extra docs --locked
 uv run plg generate                     # 20,000 synthetic users -> data/synthetic/
 uv run plg experiment onboarding_v2     # full A/B readout
 uv run plg funnel --by plan             # ordered funnel, 14-day window
@@ -20,9 +37,21 @@ uv run plg engagement                   # DAU/WAU/MAU and the north star
 uv run plg power --baseline 0.29 --mde 0.02 --daily-units 240
 
 make dashboard                          # Streamlit: funnel, retention, experiment tabs
+make site                               # static docs site -> site/index.html
 ```
 
-`make ci` runs lint, format check, type check, and tests. `make demo` runs every command above. A Dockerfile serves the dashboard on port 8501.
+`make ci` runs lint, format check, type check, and tests. A Dockerfile serves the dashboard on port 8501. Nothing needs network access or API keys after install.
+
+## Features
+
+- **Ordered funnels** with conversion windows, entry-period filters, segment breakdowns, and time-to-convert percentiles.
+- **Cohort retention**, bounded ("active in week N") and unbounded ("week N or later"), plus day-N retention; unobserved cells stay blank.
+- **Engagement**: DAU/WAU/MAU stickiness and a weekly engaged-activated-users north star.
+- **Activation search**: early-behavior rules ranked by F1, lift, or precision against week-4 retention.
+- **Experiment readout**: SRM check, raw and CUPED estimates with intervals, Holm or Benjamini-Hochberg across secondaries, mSPRT always-valid p-values, beta-binomial P(better) and expected loss, power and MDE, and a one-line decision.
+- **Power calculator** for proportions and means, including expected CUPED variance reduction and test duration.
+- **Validation harness**: multi-seed ground-truth recovery and an A/A peeking simulation.
+- **Outputs**: plain-text CLI, Streamlit dashboard, PNG charts, and a static documentation site.
 
 ## Example output
 
@@ -36,13 +65,13 @@ Experiment: onboarding_v2   data: data/synthetic (SYNTHETIC)
 Units: control 4,916 | treatment 5,042
 SRM check: chi2 = 1.59, p = 0.207 -> OK (flag if p < 0.001)
 
-metric                role  control  treatment  raw diff  CUPED diff              95% CI       p   p_adj  var red    truth  in CI
----------------  ---------  -------  ---------  --------  ----------  ------------------  ------  ------  -------  -------  -----
-activated_14d      primary   0.2878     0.3130   +0.0251     +0.0231  [+0.0054, +0.0407]  0.0104  0.0104     4.1%  +0.0228    yes
-active_days_28d  secondary   7.2445     7.5482   +0.3037     +0.2329  [-0.0170, +0.4827]  0.0677  0.1354    19.8%  +0.1748    yes
-paid_28d         secondary   0.0862     0.0956   +0.0093     +0.0083  [-0.0028, +0.0194]  0.1442  0.1442     2.6%  +0.0062    yes
+metric                role  control  treatment  raw diff   raw p  CUPED diff              95% CI  CUPED p   p_adj  var red    truth  in CI
+---------------  ---------  -------  ---------  --------  ------  ----------  ------------------  -------  ------  -------  -------  -----
+activated_14d      primary   0.2878     0.3130   +0.0251  0.0062     +0.0231  [+0.0054, +0.0407]   0.0104  0.0104     4.1%  +0.0228    yes
+active_days_28d  secondary   7.2445     7.5482   +0.3037  0.0329     +0.2329  [-0.0170, +0.4827]   0.0677  0.1354    19.8%  +0.1748    yes
+paid_28d         secondary   0.0862     0.0956   +0.0093  0.1046     +0.0083  [-0.0028, +0.0194]   0.1442  0.1442     2.6%  +0.0062    yes
 
-CUPED covariate: pre_pageviews. p_adj: holm across secondary metrics; primary tested at alpha.
+CUPED covariate: pre_pageviews; 95% CI is for the CUPED diff. p_adj: holm on CUPED p across secondary metrics; primary tested at alpha.
 Bayesian (activated_14d, Beta(1,1) prior): P(treatment > control) = 99.7%, 95% credible diff [+0.0071, +0.0431], expected loss if shipped = 0.00001
 Sequential guardrail (mSPRT, tau = 0.02): final always-valid p = 0.0263; first safe stop: 2026-03-24 (look 37 of 42).
   Naive daily peeking at p < 0.05 would have stopped: 2026-02-22 (look 7 of 42).
@@ -51,11 +80,11 @@ Power: baseline 28.8%, 4,916 per arm -> MDE at 80% power = 2.59 pp
 Decision: SHIP: activated_14d improved with no significant regressions
 ```
 
-`truth` is the effect the generator actually built in, computed analytically from each enrolled user's outcome probabilities. Every interval covers it. Note the engagement metric: the raw test calls it significant (p = 0.033), while the CUPED-adjusted estimate, which removes 20% of the variance using pre-signup behavior, moves closer to the truth and does not survive. That is the kind of false win this tool exists to catch.
-
-![Experiment intervals: raw vs CUPED, with the true effect](docs/img/experiment_ci.png)
+`truth` is the effect the generator actually built in, computed analytically from each enrolled user's outcome probabilities. Every interval covers it. On `active_days_28d` the raw test is significant (raw p = 0.0329) while the CUPED estimate, which removes 20% of the variance using pre-signup behavior, moves closer to the truth and is not significant (CUPED p = 0.0677, p_adj = 0.1354). That is the kind of false win this tool exists to catch.
 
 ![Naive vs always-valid p-values across daily looks](docs/img/sequential.png)
+
+Naive daily peeking would have declared a winner on look 7 of 42; the always-valid test first allows a stop on look 37.
 
 ### Funnel
 
@@ -117,26 +146,6 @@ session_start >= 5 in first 7d           25.6%      80.8%              30.3%   4
 view_docs >= 1 in first 7d               38.9%      62.4%              31.0%   56.2%  1.44  0.592
 ```
 
-### Does the statistics hold up?
-
-`make validate` regenerates the dataset under 100 different seeds and checks the readout against each seed's ground truth (`docs/validation/`):
-
-```text
-Ground-truth recovery over 100 seeds (20,000 users each)
-
-metric           seeds  mean_true_effect  mean_cuped_bias  raw_coverage  cuped_coverage  mean_se_ratio  power
----------------  -----  ----------------  ---------------  ------------  --------------  -------------  -----
-activated_14d      100            0.0228          -0.0008         93.0%           92.0%         0.9793  68.0%
-active_days_28d    100            0.1751          -0.0307         96.0%           93.0%         0.8888  20.0%
-paid_28d           100            0.0062           0.0001         96.0%           95.0%         0.9863  17.0%
-
-Decisions: SHIP 68, INCONCLUSIVE 32
-
-A/A peeking (2,000 sims, 30 daily looks): naive false-positive rate 28.4%, mSPRT 0.9%
-```
-
-Coverage sits within Monte Carlo error of the nominal 95% (one standard error at 100 seeds is about 2.2 points). Checking a fixed-horizon p-value every day for 30 days produces a false positive in 28% of A/A tests; the mSPRT guardrail holds it under 1%. The 68% empirical power on the primary metric lines up with the 70% the power calculator predicts for a 2.28 pp effect at about 5,000 users per arm, which is the honest answer to "why did a third of these real effects come back inconclusive".
-
 ## Architecture
 
 ```mermaid
@@ -163,6 +172,43 @@ flowchart LR
 - **Analyses** return DataFrames or small frozen dataclasses. They know nothing about presentation.
 - **Statistics** live in `plg.stats` as pure functions over arrays and counts, so they are tested against scipy and hand calculations without any data layer.
 - **Presentation** (`render.py`, `plots.py`, `dashboard.py`) consumes analysis results only. The CLI and dashboard draw the same matplotlib figures.
+- **Reports and site.** `reports.py` renders each analysis as the plain text the CLI prints; `sitegen/` embeds the same text and charts in the static site, so the docs cannot drift from the code.
+
+## Results
+
+Ground-truth recovery from `make validate`, which regenerates the dataset under 100 seeds and runs the full readout on each (`docs/validation/`):
+
+| metric | mean true effect | mean CUPED bias | raw CI coverage | CUPED CI coverage | CUPED SE / raw SE | power |
+| --- | --- | --- | --- | --- | --- | --- |
+| `activated_14d` | 0.0228 | -0.0008 | 93% | 92% | 0.979 | 68% |
+| `active_days_28d` | 0.1751 | -0.0307 | 96% | 93% | 0.889 | 20% |
+| `paid_28d` | 0.0062 | +0.0001 | 96% | 95% | 0.986 | 17% |
+
+Decisions across the 100 seeds: SHIP 68, INCONCLUSIVE 32. A/A peeking (2,000 simulations, 30 daily looks): naive false-positive rate 28.4%, mSPRT 0.9%.
+
+Full output:
+
+```text
+Ground-truth recovery over 100 seeds (20,000 users each)
+
+metric           seeds  mean_true_effect  mean_cuped_bias  raw_coverage  cuped_coverage  mean_se_ratio  power
+---------------  -----  ----------------  ---------------  ------------  --------------  -------------  -----
+activated_14d      100            0.0228          -0.0008         93.0%           92.0%         0.9793  68.0%
+active_days_28d    100            0.1751          -0.0307         96.0%           93.0%         0.8888  20.0%
+paid_28d           100            0.0062           0.0001         96.0%           95.0%         0.9863  17.0%
+
+Decisions: SHIP 68, INCONCLUSIVE 32
+
+A/A peeking (2,000 sims, 30 daily looks): naive false-positive rate 28.4%, mSPRT 0.9%
+```
+
+## How evaluation works
+
+- **Analytic ground truth.** The generator computes each enrolled user's expected outcome under both arms from the same probabilities it samples from and stores the population effect in `metadata.json`. The readout prints it in the `truth` column and whether the interval covers it.
+- **Coverage across seeds.** `make validate` reruns everything under 100 seeds. Coverage sits within Monte Carlo error of the nominal 95% (one standard error at 100 seeds is about 2.2 points).
+- **Power calibration.** The 68% empirical power on the primary metric lines up with the 70% the power calculator predicts for a 2.28 pp effect at about 5,000 users per arm, which is the honest answer to "why did a third of these real effects come back inconclusive".
+- **Peeking.** Checking a fixed-horizon p-value every day for 30 days produces a false positive in 28% of A/A tests; the mSPRT guardrail holds it under 1%.
+- **Unit tests** check each statistic against scipy or hand calculations, CUPED interval coverage by simulation on skewed counts, SRM detection on a generator that drops treatment logs, and that an A/A dataset does not produce a SHIP decision. Tests are deterministic and never use the network.
 
 ## Design decisions
 
@@ -179,6 +225,40 @@ flowchart LR
 
 All bundled data is synthetic and generated by `src/plg/synthetic.py`; nothing comes from real users or companies, and no third-party data is used. The fictional product has segments by channel, plan, and company size, a latent engagement trait that drives drop-off and churn, a churn hazard that decays with tenure (so retention curves flatten), weekend dips, pre-signup marketing pageviews, and the `onboarding_v2` experiment, which adds a fixed logit lift to the connect-data-source step for users who sign up from day 42. `data/sample_synthetic_3k/` is a committed 3,000-user sample; `plg generate` writes the 20,000-user demo dataset. See `data/README.md` for the schema.
 
+## Configuration
+
+Every analysis is configured through CLI options (`plg <command> --help`) or the dataclasses behind them:
+
+| What | Where | Defaults |
+| --- | --- | --- |
+| Synthetic world | `plg generate --users --seed --srm-drop-rate`; `GeneratorConfig` in `synthetic.py` | 20,000 users, seed 7, 84 signup days, 112 observed days, experiment from day 42, logit lift 0.20 |
+| Funnel | `plg funnel --steps --window-days --by`; `FunnelSpec` | signup to subscribe, 14-day window |
+| Retention | `plg retention --mode --weeks` | bounded, 8 weeks |
+| Activation | `plg activation --rank-by --top`; `ActivationSearch` | behaviors in the first 7 days, target active in days 21-27, thresholds 1/2/3/5/8, F1 |
+| Experiment | `plg experiment NAME --correction`; `ExperimentConfig` | primary `activated_14d`, CUPED on `pre_pageviews`, alpha 0.05, Holm, mSPRT tau 0.02, SRM flag at p < 0.001 |
+| Power | `plg power --baseline --mde --alpha --power --ratio --sd --variance-reduction --daily-units` | alpha 0.05, power 80%, 1:1 |
+| Data location | `--data` on every analysis command | `data/synthetic` |
+
+## Project layout
+
+```text
+src/plg/
+  synthetic.py      seeded SYNTHETIC generator with analytic ground truth
+  store.py          DuckDB warehouse over Parquet
+  sql/              versioned SQL with bound parameters
+  funnel.py  retention.py  engagement.py  activation.py  experiment.py
+  stats/            frequentist, cuped, multiple, sequential, bayes, power
+  validation.py     multi-seed ground-truth recovery, A/A peeking simulation
+  render.py  reports.py  plots.py   text tables, CLI reports, matplotlib charts
+  cli.py            typer CLI (plg)
+  dashboard.py      Streamlit app
+  sitegen/          static site builder and templates
+scripts/validate_experiment.py      make validate
+data/sample_synthetic_3k/           committed 3,000-user SYNTHETIC sample
+docs/                               PRODUCT.md, architecture source, charts, validation output
+tests/                              unit and integration tests
+```
+
 ## Limitations
 
 - Signups in the synthetic world stop after week 12, so the last weeks of the stickiness and north-star series reflect an ageing user base with no new acquisition, not product decline.
@@ -190,7 +270,11 @@ All bundled data is synthetic and generated by `src/plg/synthetic.py`; nothing c
 
 ## Roadmap
 
-Problem framing, users, success metrics, trade-offs, and the now / next / later roadmap (warehouse connectors, a metric layer) are in [docs/PRODUCT.md](docs/PRODUCT.md).
+Problem framing, users, success metrics, trade-offs, and the now / next / later roadmap (warehouse connectors, a metric layer) are in [docs/PRODUCT.md](docs/PRODUCT.md), also rendered on the [docs site](https://seanmcrae.github.io/plg-metrics/product.html).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues as described in [SECURITY.md](SECURITY.md). Changes are tracked in [CHANGELOG.md](CHANGELOG.md); cite with [CITATION.cff](CITATION.cff).
 
 ## License
 

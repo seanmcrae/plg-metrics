@@ -33,7 +33,7 @@ The cost is decision error: shipping changes that do nothing, killing changes th
 - Weekly cohort retention (bounded and unbounded), day-N retention, DAU/WAU/MAU, a weekly north star.
 - Activation-definition search.
 - Experiment readout: SRM, difference in proportions and means with CIs, CUPED, Holm or BH, mSPRT always-valid p-values, beta-binomial probability to beat control, power and MDE.
-- CLI, Streamlit dashboard, PNG export.
+- CLI, Streamlit dashboard, PNG export, and a static documentation site generated from the same analysis output.
 
 **Out of scope (v0.1)**
 
@@ -105,7 +105,7 @@ The tool measures itself in two ways: offline evals that run in this repository,
 
 - Funnels, retention, stickiness, north star, activation search.
 - Experiment readout with SRM, CUPED, Holm/BH, mSPRT, beta-binomial, power.
-- Multi-seed ground-truth validation, CLI, Streamlit dashboard.
+- Multi-seed ground-truth validation, CLI, Streamlit dashboard, and a docs site rebuilt from live output on every push to main.
 
 **Next**
 
