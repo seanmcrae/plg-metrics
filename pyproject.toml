@@ -1,5 +1,5 @@
 [project]
-name = "plg-analytics-toolkit"
+name = "plg-metrics"
 version = "0.1.0"
 description = "Product-led-growth analytics over event data: ordered funnels, activation search, cohort retention, and rigorous A/B experiment analysis on DuckDB + Parquet."
 readme = "README.md"
@@ -15,6 +15,9 @@ dependencies = [
     "matplotlib>=3.8",
     "typer>=0.12",
 ]
+
+[project.urls]
+Repository = "https://github.com/seanmcrae/plg-metrics"
 
 [project.optional-dependencies]
 dashboard = ["streamlit>=1.35"]
