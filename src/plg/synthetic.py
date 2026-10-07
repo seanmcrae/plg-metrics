@@ -328,7 +328,7 @@ def generate(cfg: GeneratorConfig | None = None) -> SyntheticDataset:
     emit("view_docs", docs_users, docs_offset)
 
     # Pre-signup marketing pageviews: a pre-treatment covariate for CUPED.
-    n_views = rng.poisson(np.exp(0.9 + 0.6 * traits.z))
+    n_views = rng.poisson(np.exp(1.6 + 0.8 * traits.z))
     view_users = np.repeat(ids, n_views)
     view_offset = np.repeat(signup_offset, n_views) - rng.uniform(0.01, 14.0, view_users.size)
     emit("marketing_pageview", view_users, view_offset)
