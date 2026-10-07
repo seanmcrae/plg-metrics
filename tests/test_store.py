@@ -57,3 +57,11 @@ def test_user_day_activity_dedupes_days() -> None:
     )
     assert sorted(out["day_number"]) == [0, 1]
     assert wh.observation_end() == datetime(2026, 1, 2, 9, 0, 1)
+
+
+def test_committed_sample_is_synthetic_and_queryable() -> None:
+    sample = Path(__file__).resolve().parents[1] / "data" / "sample_synthetic_3k"
+    wh = Warehouse(sample)
+    assert wh.metadata["synthetic"] is True
+    assert wh.metadata["config"]["n_users"] == 3_000
+    assert wh.query("SELECT count(*) AS n FROM users")["n"].iloc[0] == 3_000

@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "description": "SYNTHETIC event data for a fictional B2B SaaS. Not real users.",
+  "config": {
+    "n_users": 3000,
+    "seed": 7,
+    "start": "2026-01-05 00:00:00",
+    "signup_days": 84,
+    "observation_days": 112,
+    "experiment_start_day": 42,
+    "treatment_share": 0.5,
+    "treatment_logit_lift": 0.2,
+    "srm_drop_rate": 0.0,
+    "activation_window_days": 14,
+    "paid_window_days": 28,
+    "active_days_window": 28
+  },
+  "observation_end": "2026-04-27T00:00:00",
+  "experiment": {
+    "name": "onboarding_v2",
+    "start": "2026-02-16T00:00:00",
+    "covariate": "marketing_pageview count in the 14 days before signup",
+    "ground_truth": {
+      "activated_14d": {
+        "control_mean": 0.2910497037261617,
+        "treatment_mean": 0.31398884240862895,
+        "true_effect": 0.022939138682467296
+      },
+      "active_days_28d": {
+        "control_mean": 7.3222243626789965,
+        "treatment_mean": 7.497566772404283,
+        "true_effect": 0.17534240972528625
+      },
+      "paid_28d": {
+        "control_mean": 0.08834044608759588,
+        "treatment_mean": 0.09453185739817034,
+        "true_effect": 0.006191411310574434
+      }
+    }
+  }
+}
