@@ -75,6 +75,7 @@ def score_rules(counts: pd.DataFrame, label: pd.Series, search: ActivationSearch
     """Score every (event, threshold) rule; ranked best first."""
     y = label.to_numpy(dtype=bool)
     base_rate = float(y.mean())
+    n_retained = int(y.sum())
     rows = []
     for event in counts.columns:
         values = counts[event].to_numpy()
@@ -85,7 +86,7 @@ def score_rules(counts: pd.DataFrame, label: pd.Series, search: ActivationSearch
                 continue
             precision = float(y[hit].mean())
             retention_without = float(y[~hit].mean())
-            recall = float(y[hit].sum() / y.sum()) if y.any() else 0.0
+            recall = int(y[hit].sum()) / n_retained if n_retained else 0.0
             rows.append(
                 {
                     "rule": f"{event} >= {k} in first {search.early_days}d",
