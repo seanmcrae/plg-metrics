@@ -223,7 +223,8 @@ def _expected_outcomes(
 
 def _timestamps(base: pd.Timestamp, offsets_days: FloatArray) -> npt.NDArray[np.datetime64]:
     micros = np.round(offsets_days * 86_400e6).astype("int64")
-    return np.datetime64(base.to_datetime64(), "us") + micros.astype("timedelta64[us]")
+    base_us = np.int64(base.value // 1_000)  # pandas stores nanoseconds since the epoch
+    return (base_us + micros).astype("datetime64[us]")
 
 
 def generate(cfg: GeneratorConfig | None = None) -> SyntheticDataset:
