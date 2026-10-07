@@ -1,7 +1,7 @@
 UV ?= uv
 DATA ?= data/synthetic
 
-.PHONY: install lint format typecheck test data demo plots dashboard ci
+.PHONY: install lint format typecheck test data demo plots validate dashboard ci
 
 install:
 	$(UV) sync --extra dev --locked
@@ -33,6 +33,9 @@ demo: data
 
 plots: data
 	$(UV) run --no-sync plg plots --data $(DATA) --out docs/img
+
+validate:
+	$(UV) run --no-sync python scripts/validate_experiment.py --seeds 100 --out docs/validation/ground_truth.csv
 
 dashboard: data
 	$(UV) sync --extra dev --extra dashboard --locked

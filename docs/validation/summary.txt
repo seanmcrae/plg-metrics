@@ -1,0 +1,11 @@
+Ground-truth recovery over 100 seeds (20,000 users each)
+
+metric           seeds  mean_true_effect  mean_cuped_bias  raw_coverage  cuped_coverage  mean_se_ratio  power
+---------------  -----  ----------------  ---------------  ------------  --------------  -------------  -----
+activated_14d      100            0.0228          -0.0008         93.0%           92.0%         0.9793  68.0%
+active_days_28d    100            0.1751          -0.0307         96.0%           93.0%         0.8888  20.0%
+paid_28d           100            0.0062           0.0001         96.0%           95.0%         0.9863  17.0%
+
+Decisions: SHIP 68, INCONCLUSIVE 32
+
+A/A peeking (2,000 sims, 30 daily looks): naive false-positive rate 28.4%, mSPRT 0.9%
