@@ -1,0 +1,38 @@
+name: Bug report
+description: Something produces an error or a wrong number.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and its full output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: For a statistical issue, say what you expected and how you computed it (scipy call, hand calculation, reference).
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Ideally on synthetic data, e.g. `plg generate --users 5000 --seed 3` followed by the failing command.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.1.0 or a commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Python version and OS
+      placeholder: "3.12, macOS 15"

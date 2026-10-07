@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "plg-metrics: product-led-growth analytics and experiment readouts validated against synthetic ground truth"
+abstract: >-
+  Ordered funnels, activation search, cohort retention, and an A/B experiment
+  readout with SRM checks, CUPED, multiple-testing correction, mSPRT sequential
+  testing, and a Bayesian probability to beat control, running locally on
+  DuckDB over Parquet.
+type: software
+authors:
+  - given-names: Sean
+    family-names: McRae
+version: 0.1.0
+date-released: "2026-10-07"
+license: MIT
+repository-code: "https://github.com/seanmcrae/plg-metrics"
+url: "https://seanmcrae.github.io/plg-metrics/"
+keywords:
+  - product analytics
+  - a/b testing
+  - cuped
+  - sequential testing
+  - duckdb

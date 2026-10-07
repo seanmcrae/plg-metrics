@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose an analysis, statistic, or workflow improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What decision or analysis is hard today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should the tool do? For a new method, link the paper or reference implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: How would we know it is correct?
+      description: A test against a reference, a simulation, or a ground-truth check on the synthetic generator.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
