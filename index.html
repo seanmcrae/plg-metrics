@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>plg-metrics</title>
+<meta name="description" content="Product-led-growth analytics on DuckDB + Parquet: ordered funnels, activation search, cohort retention, and an A/B readout with SRM, CUPED, multiple-testing correction and sequential testing, validated against synthetic ground truth.">
+<link rel="canonical" href="https://seanmcrae.github.io/plg-metrics/">
+<style>
+:root {
+  --ink: #1f2933;
+  --muted: #52606d;
+  --line: #e4e7eb;
+  --bg: #ffffff;
+  --panel: #f5f7fa;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --code-bg: #0f172a;
+  --code-ink: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Helvetica, Arial, sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+.topbar { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--line); }
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 16px; }
+.brand { font-weight: 700; color: var(--ink); font-size: 1.05rem; }
+nav { display: flex; gap: 18px; flex-wrap: wrap; }
+nav a { color: var(--muted); font-size: 0.92rem; }
+nav a.active, nav a:hover { color: var(--ink); text-decoration: none; }
+
+.hero { background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-bottom: 1px solid var(--line); padding: 56px 0 40px; }
+.hero-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: start; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); margin: 0 0 8px; }
+h1 { font-size: 2.6rem; line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.02em; }
+.lede { font-size: 1.1rem; color: var(--muted); margin: 0 0 24px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.button { display: inline-block; padding: 10px 18px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
+.button:hover { background: var(--accent-dark); text-decoration: none; }
+.button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.button.ghost:hover { background: var(--panel); }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.stat .label { font-size: 0.78rem; color: var(--muted); }
+.stat .value { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; }
+.stat .note { font-size: 0.78rem; color: var(--muted); }
+
+.card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 24px 0; }
+.card img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+.hero-chart { margin-top: 32px; }
+.diagram img { max-width: 100%; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.two-col .card { margin: 12px 0; }
+
+.section { padding: 48px 24px 8px; }
+h2 { font-size: 1.7rem; margin: 0 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 1.2rem; margin: 32px 0 8px; }
+
+pre { overflow-x: auto; border-radius: 10px; padding: 16px 18px; font-size: 0.8rem; line-height: 1.5; }
+pre.code { background: var(--code-bg); color: var(--code-ink); }
+pre.output { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+details { margin: 8px 0 16px; }
+summary { cursor: pointer; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin: 16px 0; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--panel); font-weight: 600; }
+
+.prose { max-width: 820px; }
+.prose li { margin: 6px 0; }
+.product h1 { font-size: 2rem; margin-top: 24px; }
+.product h2 { margin-top: 36px; }
+.product table { font-size: 0.88rem; }
+.product { padding-top: 32px; padding-bottom: 48px; }
+
+.footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 24px 0; color: var(--muted); font-size: 0.88rem; }
+
+@media (max-width: 860px) {
+  .hero-grid, .two-col { grid-template-columns: 1fr; }
+  h1 { font-size: 2rem; }
+  nav { gap: 12px; }
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="index.html">plg-metrics</a>
+    <nav>
+      <a href="index.html#quickstart">Quickstart</a>
+      <a href="index.html#results">Results</a>
+      <a href="index.html#validation">Validation</a>
+      <a href="index.html#architecture">Architecture</a>
+      <a href="product.html">Product brief</a>
+      <a href="https://github.com/seanmcrae/plg-metrics">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Open-source &middot; Python 3.11+ &middot; DuckDB + Parquet</p>
+      <h1>A/B readouts that refuse to be misread.</h1>
+      <p class="lede">plg-metrics turns raw product events into ordered funnels, cohort retention, activation candidates, and an experiment readout that checks sample-ratio mismatch first, reduces variance with CUPED, corrects for multiple metrics, and guards against peeking. Every statistic is checked against a synthetic dataset whose true effect is known.</p>
+      <div class="cta">
+        <a class="button" href="#quickstart">Quickstart</a>
+        <a class="button ghost" href="https://github.com/seanmcrae/plg-metrics">View on GitHub</a>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <span class="label">Decision on activated_14d</span>
+        <span class="value">SHIP</span>
+        <span class="note">9,958 enrolled users</span>
+      </div>
+      <div class="stat">
+        <span class="label">CUPED lift (95% CI)</span>
+        <span class="value">+2.31 pp</span>
+        <span class="note">[+0.54, +4.07] pp; true effect +2.28 pp</span>
+      </div>
+      <div class="stat">
+        <span class="label">P(treatment &gt; control)</span>
+        <span class="value">99.7%</span>
+        <span class="note">Beta(1,1) posterior, baseline 28.8%</span>
+      </div>
+      <div class="stat">
+        <span class="label">A/A false positives, 30 daily looks</span>
+        <span class="value">28.4% &rarr; 0.9%</span>
+        <span class="note">naive peeking vs mSPRT, 2,000 sims</span>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <figure class="card hero-chart">
+      <img src="img/experiment_ci.png" alt="Raw and CUPED 95% intervals for each onboarding_v2 metric, with the generator's true effect marked">
+      <figcaption>onboarding_v2 on the bundled synthetic dataset: raw vs CUPED intervals per metric, with the effect the generator actually built in (dashed red).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="quickstart" class="wrap section">
+  <h2>Quickstart</h2>
+  <p>Requires Python 3.11+ and <a href="https://docs.astral.sh/uv/">uv</a>. Everything runs offline; no API keys or external data.</p>
+<pre class="code"><code>git clone https://github.com/seanmcrae/plg-metrics.git
+cd plg-metrics
+uv sync --extra dev --locked
+
+uv run plg generate                     # 20,000 synthetic users -> data/synthetic/
+uv run plg experiment onboarding_v2     # full A/B readout
+uv run plg funnel --by plan             # ordered funnel, 14-day window
+uv run plg retention --mode unbounded   # weekly cohort matrix
+uv run plg activation                   # early behaviors vs week-4 retention
+uv run plg power --baseline 0.29 --mde 0.02 --daily-units 240
+
+make dashboard                          # Streamlit: funnel, retention, experiment tabs
+make site                               # rebuild this site into site/</code></pre>
+</section>
+
+<section id="results" class="wrap section">
+  <h2>Results</h2>
+  <p>Output below was produced by the build that generated this page, on <code>data/synthetic (SYNTHETIC)</code>.</p>
+
+  <h3>Experiment readout</h3>
+  <p>The readout runs the SRM check before any estimate, prints raw and CUPED estimates side by side, tests the pre-registered primary at alpha and corrects the secondaries as a family, and shows where naive daily peeking would have stopped (look 7 of 42) versus the first stop the always-valid test allows (look 37).</p>
+<pre class="output"><code>$ plg experiment onboarding_v2
+Experiment: onboarding_v2   data: data/synthetic (SYNTHETIC)
+Units: control 4,916 | treatment 5,042
+SRM check: chi2 = 1.59, p = 0.207 -&gt; OK (flag if p &lt; 0.001)
+
+metric                role  control  treatment  raw diff   raw p  CUPED diff              95% CI  CUPED p   p_adj  var red    truth  in CI
+---------------  ---------  -------  ---------  --------  ------  ----------  ------------------  -------  ------  -------  -------  -----
+activated_14d      primary   0.2878     0.3130   +0.0251  0.0062     +0.0231  [+0.0054, +0.0407]   0.0104  0.0104     4.1%  +0.0228    yes
+active_days_28d  secondary   7.2445     7.5482   +0.3037  0.0329     +0.2329  [-0.0170, +0.4827]   0.0677  0.1354    19.8%  +0.1748    yes
+paid_28d         secondary   0.0862     0.0956   +0.0093  0.1046     +0.0083  [-0.0028, +0.0194]   0.1442  0.1442     2.6%  +0.0062    yes
+
+CUPED covariate: pre_pageviews; 95% CI is for the CUPED diff. p_adj: holm on CUPED p across secondary metrics; primary tested at alpha.
+Bayesian (activated_14d, Beta(1,1) prior): P(treatment &gt; control) = 99.7%, 95% credible diff [+0.0071, +0.0431], expected loss if shipped = 0.00001
+Sequential guardrail (mSPRT, tau = 0.02): final always-valid p = 0.0263; first safe stop: 2026-03-24 (look 37 of 42).
+  Naive daily peeking at p &lt; 0.05 would have stopped: 2026-02-22 (look 7 of 42).
+Power: baseline 28.8%, 4,916 per arm -&gt; MDE at 80% power = 2.59 pp
+
+Decision: SHIP: activated_14d improved with no significant regressions</code></pre>
+  <figure class="card">
+    <img src="img/sequential.png" alt="Naive fixed-horizon p-value and always-valid mSPRT p-value at each daily look">
+    <figcaption>Naive p-value vs always-valid p-value across daily looks at activated_14d.</figcaption>
+  </figure>
+
+  <h3>Funnel and retention</h3>
+  <div class="two-col">
+    <figure class="card">
+      <img src="img/funnel.png" alt="Ordered onboarding funnel, users per step">
+      <figcaption>Ordered funnel with a 14-day conversion window.</figcaption>
+    </figure>
+    <figure class="card">
+      <img src="img/retention_heatmap.png" alt="Weekly signup-cohort retention heatmap; unobserved cells are blank">
+      <figcaption>Bounded weekly cohort retention. Cells a cohort has not lived through stay blank.</figcaption>
+    </figure>
+  </div>
+<pre class="output"><code>$ plg funnel --by plan
+Funnel (14-day window)   data: data/synthetic (SYNTHETIC)
+
+step                 users  conv_from_start  conv_from_prev
+-------------------  -----  ---------------  --------------
+signup               20000           100.0%          100.0%
+create_workspace     16059            80.3%           80.3%
+connect_data_source   8740            43.7%           54.4%
+create_dashboard      5856            29.3%           67.0%
+invite_teammate       2023            10.1%           34.5%
+subscribe              447             2.2%           22.1%
+
+Conversion from entry by plan
+
+step                   free   trial
+-------------------  ------  ------
+signup               100.0%  100.0%
+create_workspace      79.5%   82.2%
+connect_data_source   41.7%   48.5%
+create_dashboard      27.9%   32.5%
+invite_teammate        9.7%   11.0%
+subscribe              1.7%    3.4%
+
+Hours from entry to step (converters only)
+
+step                 converters  mean_hours    p50    p75    p90
+-------------------  ----------  ----------  -----  -----  -----
+create_workspace          16059         0.5    0.3    0.6    1.1
+connect_data_source        8740        40.9   19.1   49.3  108.6
+create_dashboard           5856        87.7   63.7  122.1  200.1
+invite_teammate            2023       142.6  125.8  195.5  262.5
+subscribe                   447       224.1  230.9  281.0  316.5</code></pre>
+
+  <h3>Activation search</h3>
+  <p>Candidate activation rules ranked by F1 against week-4 retention. These are correlations: a shortlist for an experiment, not a causal claim.</p>
+<pre class="output"><code>$ plg activation --top 6
+Activation search (target: active in days 21-27)   data: data/synthetic (SYNTHETIC)
+Base week-4 retention: 43.2%
+
+rule                                  coverage  precision  retention_without  recall  lift     f1
+------------------------------------  --------  ---------  -----------------  ------  ----  -----
+session_start &gt;= 3 in first 7d           58.2%      66.1%              11.3%   89.1%  1.53  0.759
+session_start &gt;= 2 in first 7d           73.7%      57.0%               4.5%   97.3%  1.32  0.719
+add_chart &gt;= 1 in first 7d               36.7%      71.4%              26.9%   60.7%  1.65  0.656
+connect_data_source &gt;= 1 in first 7d     41.7%      62.9%              29.1%   60.7%  1.46  0.618
+session_start &gt;= 5 in first 7d           25.6%      80.8%              30.3%   47.9%  1.87  0.602
+view_docs &gt;= 1 in first 7d               38.9%      62.4%              31.0%   56.2%  1.44  0.592</code></pre>
+</section>
+
+<section id="validation" class="wrap section">
+  <h2>How evaluation works</h2>
+  <p>The synthetic generator computes each enrolled user's expected outcome under both arms from the same probabilities it samples from, so every dataset carries an analytic true effect. <code>make validate</code> regenerates the dataset under 100 seeds (20,000 users each), runs the full readout, and records whether each interval covers the truth. Nominal coverage is 95%; one Monte Carlo standard error at 100 seeds is about 2.2 points.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>metric</th><th>mean true effect</th><th>mean CUPED bias</th><th>raw CI coverage</th><th>CUPED CI coverage</th><th>CUPED SE / raw SE</th><th>power</th></tr></thead>
+    <tbody>
+    
+      <tr><td><code>activated_14d</code></td><td>0.0228</td><td>-0.0008</td><td>93%</td><td>92%</td><td>0.979</td><td>68%</td></tr>
+    
+      <tr><td><code>active_days_28d</code></td><td>0.1751</td><td>-0.0307</td><td>96%</td><td>93%</td><td>0.889</td><td>20%</td></tr>
+    
+      <tr><td><code>paid_28d</code></td><td>0.0062</td><td>+0.0001</td><td>96%</td><td>95%</td><td>0.986</td><td>17%</td></tr>
+    
+    </tbody>
+  </table>
+  </div>
+  <p>Decisions across seeds: SHIP 68, INCONCLUSIVE 32. A/A peeking (2,000 sims, 30 daily looks): naive false-positive rate 28.4%, mSPRT 0.9%.</p>
+  <p>Unit tests check every statistic against scipy or hand calculations, CUPED interval coverage by simulation on skewed counts, SRM detection on a generator that drops treatment logs, and that an A/A dataset never produces a SHIP decision.</p>
+</section>
+
+<section id="architecture" class="wrap section">
+  <h2>Architecture</h2>
+  <figure class="card diagram">
+    <img src="img/architecture.svg" alt="Architecture: synthetic generator to Parquet, DuckDB warehouse, analyses, statistics, reports, plots, CLI, dashboard and site">
+  </figure>
+  <details>
+    <summary>Mermaid source</summary>
+<pre class="code"><code>flowchart LR
+    gen[&#34;synthetic.py&lt;br/&gt;seeded generator&lt;br/&gt;+ ground truth&#34;] --&gt; pq[(&#34;Parquet&lt;br/&gt;users / events / assignments&#34;)]
+    pq --&gt; wh[&#34;store.Warehouse&lt;br/&gt;DuckDB views&#34;]
+    sql[&#34;sql/*.sql&lt;br/&gt;+ funnel query builder&#34;] --&gt; wh
+    wh --&gt; fun[&#34;funnel.py&#34;]
+    wh --&gt; ret[&#34;retention.py&#34;]
+    wh --&gt; eng[&#34;engagement.py&#34;]
+    wh --&gt; act[&#34;activation.py&#34;]
+    wh --&gt; exp[&#34;experiment.py&#34;]
+    stats[&#34;stats/&lt;br/&gt;frequentist, cuped, multiple,&lt;br/&gt;sequential, bayes, power&#34;] --&gt; exp
+    gen --&gt; val[&#34;validation.py&lt;br/&gt;multi-seed ground truth&#34;]
+    exp --&gt; val
+    fun &amp; ret &amp; eng &amp; act &amp; exp --&gt; rep[&#34;reports.py&lt;br/&gt;plain-text readouts&#34;]
+    fun &amp; ret &amp; exp --&gt; plots[&#34;plots.py&lt;br/&gt;matplotlib charts&#34;]
+    rep --&gt; cli[&#34;cli.py (typer)&#34;]
+    plots --&gt; dash[&#34;dashboard.py (Streamlit)&#34;]
+    rep &amp; plots &amp; val --&gt; site[&#34;sitegen/&lt;br/&gt;static site for Pages&#34;]
+</code></pre>
+  </details>
+  <h3>Design decisions</h3>
+  <div class="prose"><ul>
+<li><strong>Funnel semantics are explicit.</strong> Entry is the first occurrence of step 0 in the entry period; each later step must occur at or after the previous matched step and within the window measured from entry. Matching the earliest qualifying event is optimal, so the funnel never undercounts a user who had a valid ordered path. Tied timestamps satisfy ordering because batch loggers often stamp consecutive events identically. All of these cases have unit tests.</li>
+<li><strong>Retention never shows a zero it has not observed.</strong> Cells a cohort has not fully lived through are blank, and the weighted curve averages complete cells only. Bounded (&quot;active in week N&quot;) and unbounded (&quot;active in week N or later&quot;) retention are separate modes because they answer different questions.</li>
+<li><strong>Integrity before results.</strong> The SRM check runs first at p &lt; 0.001; a mismatch turns the decision into INVALID regardless of the metrics.</li>
+<li><strong>CUPED by default</strong> with a pre-treatment covariate (marketing pageviews in the 14 days before signup). Theta is estimated on the pooled sample, which keeps the estimator unbiased; raw estimates are always printed alongside.</li>
+<li><strong>Correction family.</strong> The pre-registered primary metric is tested at alpha; Holm (default) or Benjamini-Hochberg adjusts the secondaries. Adding a secondary metric therefore never weakens the primary decision, and fishing among secondaries is still penalized. Any significant regression blocks a ship.</li>
+<li><strong>Sequential testing via mSPRT</strong> (Johari et al., 2017) rather than alpha spending: it needs no pre-committed number of looks, which matches how teams actually check dashboards. Looks are indexed by enrollment day, with each user scored on a matured outcome window.</li>
+<li><strong>Bayesian next to frequentist.</strong> P(treatment &gt; control) uses the exact closed form for Beta posteriors, not sampling; the credible interval and expected loss use seeded Monte Carlo so output is reproducible.</li>
+<li><strong>Ground truth is analytic.</strong> The generator computes each enrolled user's expected outcome under both arms from the same probabilities it samples from, so &quot;truth&quot; is not another noisy simulation.</li>
+</ul>
+</div>
+</section>
+
+<section id="limitations" class="wrap section">
+  <h2>Limitations</h2>
+  <div class="prose"><ul>
+<li>All results are on synthetic data; see the failure table above for what that leaves untested.</li>
+<li>Signups in the synthetic world stop after week 12, so the last weeks of the stickiness and north-star series reflect an ageing user base with no new acquisition, not product decline.</li>
+<li>Activation search output is a shortlist of correlations; adopting a rule as the activation metric needs judgement and then an experiment.</li>
+<li>Users are the unit everywhere. Account-level (workspace) analysis and cluster-robust errors for multi-user accounts are not implemented.</li>
+<li>Delta-method intervals are used for relative lift; for very small baselines a Fieller or bootstrap interval would be safer.</li>
+<li>CUPED intervals treat theta as known. At thousands of users per arm the effect on coverage is negligible; on very small samples it is not.</li>
+<li>DuckDB runs in-process on one machine. That is comfortable for tens of millions of events, not for a warehouse-scale event table.</li>
+</ul>
+</div>
+  <p>Problem framing, users, success metrics, trade-offs and the roadmap are in the <a href="product.html">product brief</a>.</p>
+</section>
+
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <p>All data on this site is <strong>synthetic</strong>, generated by <code>plg generate</code> (20,000 users, seed 7). Numbers and charts are produced by the code at build time.</p>
+    <p><a href="https://github.com/seanmcrae/plg-metrics">Source on GitHub</a> &middot; <a href="https://github.com/seanmcrae/plg-metrics/blob/main/LICENSE">MIT License</a> &middot; &copy; 2026 Sean McRae</p>
+  </div>
+</footer>
+</body>
+</html>

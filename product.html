@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product brief - plg-metrics</title>
+<meta name="description" content="Product-led-growth analytics on DuckDB + Parquet: ordered funnels, activation search, cohort retention, and an A/B readout with SRM, CUPED, multiple-testing correction and sequential testing, validated against synthetic ground truth.">
+<link rel="canonical" href="https://seanmcrae.github.io/plg-metrics/product.html">
+<style>
+:root {
+  --ink: #1f2933;
+  --muted: #52606d;
+  --line: #e4e7eb;
+  --bg: #ffffff;
+  --panel: #f5f7fa;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --code-bg: #0f172a;
+  --code-ink: #e2e8f0;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, &#34;Segoe UI&#34;, Helvetica, Arial, sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+.topbar { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--line); }
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 16px; }
+.brand { font-weight: 700; color: var(--ink); font-size: 1.05rem; }
+nav { display: flex; gap: 18px; flex-wrap: wrap; }
+nav a { color: var(--muted); font-size: 0.92rem; }
+nav a.active, nav a:hover { color: var(--ink); text-decoration: none; }
+
+.hero { background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-bottom: 1px solid var(--line); padding: 56px 0 40px; }
+.hero-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: start; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); margin: 0 0 8px; }
+h1 { font-size: 2.6rem; line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.02em; }
+.lede { font-size: 1.1rem; color: var(--muted); margin: 0 0 24px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.button { display: inline-block; padding: 10px 18px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
+.button:hover { background: var(--accent-dark); text-decoration: none; }
+.button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.button.ghost:hover { background: var(--panel); }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.stat .label { font-size: 0.78rem; color: var(--muted); }
+.stat .value { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.01em; }
+.stat .note { font-size: 0.78rem; color: var(--muted); }
+
+.card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 24px 0; }
+.card img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+.hero-chart { margin-top: 32px; }
+.diagram img { max-width: 100%; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.two-col .card { margin: 12px 0; }
+
+.section { padding: 48px 24px 8px; }
+h2 { font-size: 1.7rem; margin: 0 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 1.2rem; margin: 32px 0 8px; }
+
+pre { overflow-x: auto; border-radius: 10px; padding: 16px 18px; font-size: 0.8rem; line-height: 1.5; }
+pre.code { background: var(--code-bg); color: var(--code-ink); }
+pre.output { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+details { margin: 8px 0 16px; }
+summary { cursor: pointer; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin: 16px 0; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--panel); font-weight: 600; }
+
+.prose { max-width: 820px; }
+.prose li { margin: 6px 0; }
+.product h1 { font-size: 2rem; margin-top: 24px; }
+.product h2 { margin-top: 36px; }
+.product table { font-size: 0.88rem; }
+.product { padding-top: 32px; padding-bottom: 48px; }
+
+.footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 24px 0; color: var(--muted); font-size: 0.88rem; }
+
+@media (max-width: 860px) {
+  .hero-grid, .two-col { grid-template-columns: 1fr; }
+  h1 { font-size: 2rem; }
+  nav { gap: 12px; }
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="index.html">plg-metrics</a>
+    <nav>
+      <a href="index.html#quickstart">Quickstart</a>
+      <a href="index.html#results">Results</a>
+      <a href="index.html#validation">Validation</a>
+      <a href="index.html#architecture">Architecture</a>
+      <a href="product.html" class="active">Product brief</a>
+      <a href="https://github.com/seanmcrae/plg-metrics">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<section class="wrap prose product">
+  <p class="eyebrow">Product brief &middot; rendered from <a href="https://github.com/seanmcrae/plg-metrics/blob/main/docs/PRODUCT.md">docs/PRODUCT.md</a></p>
+<h1>plg-metrics: product write-up</h1>
+<h2>Problem</h2>
+<p>Growth teams make most of their decisions from three artifacts: a funnel, a retention chart, and an A/B test readout. All three are easy to misread, and the errors are systematic rather than random.</p>
+<ul>
+<li><strong>Funnels lie about where users drop.</strong> Unordered counts, inconsistent conversion windows, and re-anchoring on a user's latest visit inflate or deflate step conversion. A 14-day window reports a monetization problem that is really a timing problem: on the bundled synthetic data, 2.2% of entrants pay within 14 days and 4.8% within the full 112 days.</li>
+<li><strong>Retention charts show zeros nobody observed.</strong> Young cohorts get plotted against weeks they have not lived through, which reads as a collapse.</li>
+<li><strong>Experiments get peeked at.</strong> Checking a fixed-horizon p-value daily and stopping at the first p &lt; 0.05 produces a false positive in 28.4% of A/A tests over 30 looks (2,000 simulations, <code>make validate</code>), roughly six times the error rate the team thinks it accepted.</li>
+<li><strong>Integrity checks run last, if at all.</strong> A sample-ratio mismatch from a logging bug invalidates every number in a readout, but most dashboards show the lift first and the SRM warning, if any, at the bottom.</li>
+<li><strong>Secondary metrics turn into fishing.</strong> With five metrics at alpha = 0.05, a team will see at least one &quot;significant&quot; movement in about 23% of experiments that change nothing.</li>
+</ul>
+<p>The cost is decision error: shipping changes that do nothing, killing changes that work, and building roadmaps on activation definitions that are just proxies for &quot;was already engaged&quot;.</p>
+<h2>Users and jobs to be done</h2>
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>Job</th>
+<th>What they need from the tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Growth PM</td>
+<td>&quot;Tell me whether to ship onboarding_v2, and how sure I can be.&quot;</td>
+<td>One readout with a decision line, the evidence behind it, and a refusal to answer when the data is broken (SRM).</td>
+</tr>
+<tr>
+<td>Growth PM</td>
+<td>&quot;How long do I need to run this test?&quot;</td>
+<td>Sample size and duration from a baseline, an MDE, and daily traffic, including the effect of CUPED.</td>
+</tr>
+<tr>
+<td>Product analyst</td>
+<td>&quot;Where is the funnel actually leaking, and for which segment?&quot;</td>
+<td>Ordered funnel with explicit window semantics, segment breakdowns, and time-to-convert.</td>
+</tr>
+<tr>
+<td>Product analyst</td>
+<td>&quot;What should our activation metric be?&quot;</td>
+<td>A ranked list of early-behavior rules with coverage, precision, recall, and lift against week-4 retention.</td>
+</tr>
+<tr>
+<td>Data scientist</td>
+<td>&quot;Can I trust these statistics?&quot;</td>
+<td>Methods tested against scipy, hand calculations, simulation, and synthetic ground truth.</td>
+</tr>
+<tr>
+<td>Leadership</td>
+<td>&quot;Is the product getting stickier?&quot;</td>
+<td>DAU/MAU and a defined north-star series, weekly.</td>
+</tr>
+</tbody>
+</table>
+<h2>Scope</h2>
+<p><strong>In scope (v0.1)</strong></p>
+<ul>
+<li>Seeded synthetic event generator for a B2B SaaS funnel with segments, realistic drop-off and churn, a pre-period covariate, and an embedded experiment with an analytically known effect.</li>
+<li>DuckDB over Parquet; SQL in versioned <code>.sql</code> files with bound parameters.</li>
+<li>Ordered funnels with conversion windows, entry-period filters, segment breakdowns, time-to-convert.</li>
+<li>Weekly cohort retention (bounded and unbounded), day-N retention, DAU/WAU/MAU, a weekly north star.</li>
+<li>Activation-definition search.</li>
+<li>Experiment readout: SRM, difference in proportions and means with CIs, CUPED, Holm or BH, mSPRT always-valid p-values, beta-binomial probability to beat control, power and MDE.</li>
+<li>CLI, Streamlit dashboard, PNG export, and a static documentation site generated from the same analysis output.</li>
+</ul>
+<p><strong>Out of scope (v0.1)</strong></p>
+<ul>
+<li>Connectors to warehouses or product-analytics tools.</li>
+<li>A metric definition layer shared across tools.</li>
+<li>Account-level (multi-user workspace) analysis and cluster-robust errors.</li>
+<li>Heterogeneous-effect discovery, multi-armed bandits, interleaving.</li>
+<li>Experiment assignment. The tool reads assignments; it does not create them.</li>
+</ul>
+<h2>Requirements</h2>
+<ol>
+<li><strong>Integrity first.</strong> The readout runs SRM before any estimate; a mismatch (p &lt; 0.001) overrides the decision to INVALID.</li>
+<li><strong>Every estimate has an interval.</strong> No point estimate is printed without a CI and a p-value; raw and CUPED estimates appear side by side.</li>
+<li><strong>Primary vs secondary is explicit.</strong> The primary metric is tested at alpha; secondaries are corrected as a family; any significant regression blocks a ship.</li>
+<li><strong>Peeking is visible.</strong> The readout states when the always-valid test first allowed a stop and when naive peeking would have stopped.</li>
+<li><strong>No silent truncation.</strong> Retention cells not fully observed are blank; ratios that need a full 28-day MAU window are blank until it exists.</li>
+<li><strong>Reproducible.</strong> The same seed produces byte-identical data; Monte Carlo summaries are seeded.</li>
+<li><strong>Local and fast.</strong> Each CLI command on the 20,000-user, 749k-event synthetic dataset completes in about 1.5 to 2.5 seconds wall time including interpreter start, measured on a 2-vCPU sandbox.</li>
+<li><strong>Statistically verified in CI.</strong> Stats functions match scipy or hand calculations; interval coverage and mSPRT error control are checked by simulation; the readout must recover the synthetic ground truth.</li>
+</ol>
+<h2>Success metrics and evals</h2>
+<p>The tool measures itself in two ways: offline evals that run in this repository, and the product metrics a team would track once it is in use.</p>
+<p><strong>Offline evals (shipping gates, run in CI or <code>make validate</code>)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Eval</th>
+<th>How</th>
+<th>Current result (bundled synthetic data)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ground-truth recovery</td>
+<td>100 seeds x 20,000 users; does the CUPED 95% CI cover the generator's true effect?</td>
+<td>92% activation, 93% active days, 95% paid (one SE is about 2.2 pts)</td>
+</tr>
+<tr>
+<td>Estimator bias</td>
+<td>Mean CUPED estimate minus truth over 100 seeds</td>
+<td>-0.0008 on a 0.0228 activation effect</td>
+</tr>
+<tr>
+<td>Variance reduction</td>
+<td>Mean CUPED SE / raw SE</td>
+<td>0.889 on active days (about 21% less variance)</td>
+</tr>
+<tr>
+<td>Peeking control</td>
+<td>A/A, 30 daily looks, 2,000 sims</td>
+<td>naive 28.4% false positives, mSPRT 0.9%</td>
+</tr>
+<tr>
+<td>SRM detection</td>
+<td>Generator drops 8% of treatment logs</td>
+<td>flagged, decision INVALID (test)</td>
+</tr>
+<tr>
+<td>A/A sanity</td>
+<td>Generator with zero lift</td>
+<td>decision not SHIP (test)</td>
+</tr>
+<tr>
+<td>Power calibration</td>
+<td>Empirical vs predicted power on the primary metric</td>
+<td>68% observed vs 70% predicted</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Product metrics (once adopted by a growth team)</strong></p>
+<ul>
+<li><strong>Time to insight:</strong> minutes from &quot;experiment ended&quot; to a shareable readout. Target under 10 minutes, including data refresh; the CLI readout itself takes seconds.</li>
+<li><strong>Decision error rate:</strong> share of shipped experiments whose effect fails to replicate in a holdout or follow-up test. Target under 10%.</li>
+<li><strong>Invalid-readout catch rate:</strong> share of experiments with an SRM or logging defect caught before a decision. Target 100% of SRM-detectable defects.</li>
+<li><strong>Peeking stops avoided:</strong> count of experiments where naive p crossed alpha before the always-valid p did. Reported per quarter as the value of the guardrail.</li>
+<li><strong>Activation definition stability:</strong> whether the top-ranked rule stays in the top three across consecutive monthly cohorts.</li>
+</ul>
+<h2>Minimum viable quality</h2>
+<p>Thresholds are on the bundled synthetic data and the offline evals above. &quot;Current&quot; is the committed <code>docs/validation/</code> output and the test suite.</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Do not ship</th>
+<th>Ship</th>
+<th>Delight</th>
+<th>Current</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SRM detection (8% of treatment logs dropped)</td>
+<td>not flagged, or decision not INVALID</td>
+<td>flagged, decision INVALID</td>
+<td>same</td>
+<td>flagged, INVALID (test)</td>
+</tr>
+<tr>
+<td>A/A sanity</td>
+<td>any SHIP on a zero-lift dataset</td>
+<td>never SHIP</td>
+<td>same</td>
+<td>not SHIP (test)</td>
+</tr>
+<tr>
+<td>Peeking control (A/A, 30 looks, 2,000 sims)</td>
+<td>mSPRT false-positive rate above 5%</td>
+<td>at or below 5%</td>
+<td>at or below 1%</td>
+<td>0.9%</td>
+</tr>
+<tr>
+<td>CUPED 95% CI coverage, every metric, 100 seeds</td>
+<td>below 90% (more than 2 SE under nominal)</td>
+<td>90% or more</td>
+<td>93-97% on every metric</td>
+<td>92% / 93% / 95%</td>
+</tr>
+<tr>
+<td>Mean CUPED bias, every metric, 100 seeds</td>
+<td>more than 3 SE of the mean from zero</td>
+<td>within 3 SE</td>
+<td>within 1 SE</td>
+<td>within 1 SE on activation and paid; about 2.3 SE on active days (issue #5)</td>
+</tr>
+<tr>
+<td>Power calibration, primary metric</td>
+<td>empirical more than 10 pts from predicted</td>
+<td>within 10 pts</td>
+<td>within 5 pts</td>
+<td>68% vs 70%</td>
+</tr>
+<tr>
+<td>Variance reduction on the primary, CUPED SE / raw SE</td>
+<td>above 1.0 (CUPED widens the interval)</td>
+<td>1.0 or below</td>
+<td>0.90 or below</td>
+<td>0.979 (issue #6)</td>
+</tr>
+<tr>
+<td>CLI runtime per command, 20,000 users</td>
+<td>above 10 s</td>
+<td>under 5 s</td>
+<td>under 2.5 s</td>
+<td>about 1.5-2.5 s</td>
+</tr>
+</tbody>
+</table>
+<p>v0.1 meets every &quot;Ship&quot; gate. It misses &quot;Delight&quot; on variance reduction for the primary and on active-days bias, which are the two open statistical issues.</p>
+<h2>Cost at 1x and 10x usage</h2>
+<p>Estimates, not measurements, built only on this repository's own assumptions: everything runs in-process (DuckDB over Parquet, Python CLI), no paid API, no server, no API keys. Usage here means the size of the event table and how often readouts run.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>1x (bundled demo)</th>
+<th>10x (estimate)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>20,000 users, about 749k events</td>
+<td>about 200,000 users, about 7.5M events</td>
+</tr>
+<tr>
+<td>Per-request API or hosting cost</td>
+<td>none</td>
+<td>none</td>
+</tr>
+<tr>
+<td>Compute per readout</td>
+<td>about 1.5-2.5 s per CLI command on 2 vCPUs (measured, see Requirements)</td>
+<td>not measured; the repo's stated envelope for one machine is tens of millions of events, so 10x stays inside it</td>
+</tr>
+<tr>
+<td><code>make validate</code> (100 regenerated datasets)</td>
+<td>one batch job on the same machine</td>
+<td>grows with dataset size; runs offline, not per readout</td>
+</tr>
+<tr>
+<td>Where cost starts</td>
+<td>developer or CI machine time only</td>
+<td>the next step past this envelope is warehouse connectors (roadmap), where query cost moves to the team's warehouse bill</td>
+</tr>
+</tbody>
+</table>
+<p>At 10x the cost that changes is wall time on one machine, not a bill. The repo has no pricing assumptions for a warehouse, so no dollar figure is given for that step.</p>
+<h2>Trade-offs and alternatives considered</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Chosen</th>
+<th>Alternative</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compute</td>
+<td>DuckDB in-process on Parquet</td>
+<td>Warehouse (BigQuery, Snowflake)</td>
+<td>Zero setup, sub-second queries at the bundled scale, and the SQL ports to a warehouse dialect with small changes. The cost is a single-machine ceiling; connectors are the first roadmap item.</td>
+</tr>
+<tr>
+<td>Query style</td>
+<td><code>.sql</code> files plus one builder</td>
+<td>ORM or a dataframe API</td>
+<td>Analysts can read and review SQL; only the funnel needs a builder because its CTE chain depends on step count.</td>
+</tr>
+<tr>
+<td>Inference</td>
+<td>Frequentist primary, Bayesian alongside</td>
+<td>Bayesian only</td>
+<td>Frequentist error rates are what stakeholders and correction methods are defined against; P(better) and expected loss answer the question PMs actually ask. Showing both makes disagreement visible instead of hiding it.</td>
+</tr>
+<tr>
+<td>Sequential method</td>
+<td>mSPRT</td>
+<td>O'Brien-Fleming alpha spending</td>
+<td>mSPRT needs no fixed number of looks. Alpha spending has more power when the look schedule is known and honored, which in practice it rarely is.</td>
+</tr>
+<tr>
+<td>Variance reduction</td>
+<td>CUPED, one covariate</td>
+<td>Regression adjustment with many covariates, CUPAC</td>
+<td>CUPED is transparent and unbiased with a single pre-period metric. Multi-covariate and ML-based adjustment can reduce more variance; they are on the roadmap behind a metric layer that can supply the covariates.</td>
+</tr>
+<tr>
+<td>Correction</td>
+<td>Holm (FWER) default, BH optional</td>
+<td>Bonferroni, no correction</td>
+<td>Holm is never less powerful than Bonferroni and gives the same family-wise guarantee; BH suits exploratory readouts with many secondaries.</td>
+</tr>
+<tr>
+<td>Activation ranking</td>
+<td>F1 by default</td>
+<td>Lift</td>
+<td>Lift favors rare, extreme thresholds that cover few users; F1 balances precision and reach, which is what an onboarding target needs.</td>
+</tr>
+<tr>
+<td>Validation data</td>
+<td>Synthetic with analytic ground truth</td>
+<td>Public event datasets</td>
+<td>No public product dataset ships with a known experiment effect. Synthetic data is the only way to test whether the readout recovers the truth.</td>
+</tr>
+</tbody>
+</table>
+<h2>Risks</h2>
+<ul>
+<li><strong>Synthetic optimism.</strong> Real event data has bots, duplicate events, identity-stitching gaps, and clock skew. Mitigation: the next release adds data-quality checks (duplicate rate, late events, unknown users) that run before any analysis.</li>
+<li><strong>Misuse of activation search.</strong> Teams may adopt the top correlational rule as the activation metric. Mitigation: output is labelled as a shortlist; the docs require an experiment before adoption.</li>
+<li><strong>Unit mismatch.</strong> Users are the unit, but B2B outcomes like payment happen per account. Mitigation: account-level analysis with clustered errors is on the roadmap; until then the README states the limitation.</li>
+<li><strong>False confidence from a SHIP line.</strong> A decision string can be over-trusted. Mitigation: the decision is always printed below the evidence and is downgraded by SRM or any significant regression.</li>
+<li><strong>Scale ceiling.</strong> DuckDB on one machine will not handle billions of events. Mitigation: warehouse connectors that push the same SQL down.</li>
+</ul>
+<h2>Roadmap</h2>
+<p><strong>Now (v0.1, this repository)</strong></p>
+<ul>
+<li>Funnels, retention, stickiness, north star, activation search.</li>
+<li>Experiment readout with SRM, CUPED, Holm/BH, mSPRT, beta-binomial, power.</li>
+<li>Multi-seed ground-truth validation, CLI, Streamlit dashboard, and a docs site rebuilt from live output on every push to main.</li>
+</ul>
+<p><strong>Next</strong></p>
+<ul>
+<li>Warehouse connectors (BigQuery, Snowflake, Postgres) that run the same <code>.sql</code> through a dialect layer, plus Segment and Amplitude export readers.</li>
+<li>A metric layer: metrics defined once in YAML (event, filter, window, aggregation, owner) and used by the CLI, dashboard, and readout, so &quot;activation&quot; means the same thing everywhere.</li>
+<li>Data-quality checks before analysis: duplicates, late-arriving events, unknown users, assignment drift.</li>
+<li>Account-level analysis with cluster-robust standard errors.</li>
+</ul>
+<p><strong>Later</strong></p>
+<ul>
+<li>Multi-covariate regression adjustment and CUPAC.</li>
+<li>Heterogeneous treatment effects by segment, with correction.</li>
+<li>Experiment registry: pre-registered primary metric, MDE, and duration, checked against the readout.</li>
+<li>Scheduled readouts posted to Slack with the decision line and SRM status.</li>
+</ul>
+
+</section>
+
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <p>All data on this site is <strong>synthetic</strong>, generated by <code>plg generate</code> (20,000 users, seed 7). Numbers and charts are produced by the code at build time.</p>
+    <p><a href="https://github.com/seanmcrae/plg-metrics">Source on GitHub</a> &middot; <a href="https://github.com/seanmcrae/plg-metrics/blob/main/LICENSE">MIT License</a> &middot; &copy; 2026 Sean McRae</p>
+  </div>
+</footer>
+</body>
+</html>
