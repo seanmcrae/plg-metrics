@@ -78,6 +78,37 @@ The tool measures itself in two ways: offline evals that run in this repository,
 - **Peeking stops avoided:** count of experiments where naive p crossed alpha before the always-valid p did. Reported per quarter as the value of the guardrail.
 - **Activation definition stability:** whether the top-ranked rule stays in the top three across consecutive monthly cohorts.
 
+## Minimum viable quality
+
+Thresholds are on the bundled synthetic data and the offline evals above. "Current" is the committed `docs/validation/` output and the test suite.
+
+| Gate | Do not ship | Ship | Delight | Current |
+| --- | --- | --- | --- | --- |
+| SRM detection (8% of treatment logs dropped) | not flagged, or decision not INVALID | flagged, decision INVALID | same | flagged, INVALID (test) |
+| A/A sanity | any SHIP on a zero-lift dataset | never SHIP | same | not SHIP (test) |
+| Peeking control (A/A, 30 looks, 2,000 sims) | mSPRT false-positive rate above 5% | at or below 5% | at or below 1% | 0.9% |
+| CUPED 95% CI coverage, every metric, 100 seeds | below 90% (more than 2 SE under nominal) | 90% or more | 93-97% on every metric | 92% / 93% / 95% |
+| Mean CUPED bias, every metric, 100 seeds | more than 3 SE of the mean from zero | within 3 SE | within 1 SE | within 1 SE on activation and paid; about 2.3 SE on active days (issue #5) |
+| Power calibration, primary metric | empirical more than 10 pts from predicted | within 10 pts | within 5 pts | 68% vs 70% |
+| Variance reduction on the primary, CUPED SE / raw SE | above 1.0 (CUPED widens the interval) | 1.0 or below | 0.90 or below | 0.979 (issue #6) |
+| CLI runtime per command, 20,000 users | above 10 s | under 5 s | under 2.5 s | about 1.5-2.5 s |
+
+v0.1 meets every "Ship" gate. It misses "Delight" on variance reduction for the primary and on active-days bias, which are the two open statistical issues.
+
+## Cost at 1x and 10x usage
+
+Estimates, not measurements, built only on this repository's own assumptions: everything runs in-process (DuckDB over Parquet, Python CLI), no paid API, no server, no API keys. Usage here means the size of the event table and how often readouts run.
+
+| | 1x (bundled demo) | 10x (estimate) |
+| --- | --- | --- |
+| Data | 20,000 users, about 749k events | about 200,000 users, about 7.5M events |
+| Per-request API or hosting cost | none | none |
+| Compute per readout | about 1.5-2.5 s per CLI command on 2 vCPUs (measured, see Requirements) | not measured; the repo's stated envelope for one machine is tens of millions of events, so 10x stays inside it |
+| `make validate` (100 regenerated datasets) | one batch job on the same machine | grows with dataset size; runs offline, not per readout |
+| Where cost starts | developer or CI machine time only | the next step past this envelope is warehouse connectors (roadmap), where query cost moves to the team's warehouse bill |
+
+At 10x the cost that changes is wall time on one machine, not a bill. The repo has no pricing assumptions for a warehouse, so no dollar figure is given for that step.
+
 ## Trade-offs and alternatives considered
 
 | Decision | Chosen | Alternative | Why |
