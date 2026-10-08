@@ -5,11 +5,27 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](pyproject.toml)
 
-**A/B readouts that refuse to be misread: funnels, retention, activation search, and experiment analysis on DuckDB + Parquet, with every statistic checked against synthetic ground truth.**
+**Should we ship this experiment? plg-metrics gives a growth team that answer with its evidence, and refuses to give it when the data is broken, the test was peeked at, or a "win" is noise.** It also computes the funnels, retention, and activation rules behind the decision, on DuckDB + Parquet, with every statistic checked against synthetic ground truth.
 
 **Live docs:** [seanmcrae.github.io/plg-metrics](https://seanmcrae.github.io/plg-metrics/)
 
 Growth decisions come from a funnel, a retention chart, and an experiment readout, and all three are easy to misread. plg-metrics computes them from raw events with explicit semantics, and its experiment readout checks sample-ratio mismatch before showing any result, reduces variance with CUPED, corrects for multiple metrics, flags early peeking with an always-valid sequential test, and reports a Bayesian probability to beat control next to the frequentist interval. The bundled data is a seeded, **synthetic** B2B SaaS event stream with an embedded onboarding experiment whose true effect is known, so the statistics are verified rather than taken on faith.
+
+## Numbers
+
+All figures are on the bundled **synthetic** data: `docs/validation/` (100 seeds x 20,000 users, `make validate`) and the seed-7 demo readout below.
+
+| | Result | Compared with |
+| --- | --- | --- |
+| **False positives under daily peeking** (A/A, 2,000 sims, 30 looks) | **0.9%** with the mSPRT guardrail | 28.4% for naive daily p < 0.05 |
+| CUPED 95% CI coverage of the true effect (100 seeds) | 92% / 93% / 95% (activation / active days / paid) | nominal 95%; 1 SE at 100 seeds is about 2.2 pts |
+| Variance reduction, CUPED SE / raw SE (100 seeds) | 0.979 activation, 0.889 active days, 0.986 paid | 1.0 = raw difference in means, no reduction |
+| Primary-metric power at about 5,000 users per arm | 68% empirical | 70% predicted by `plg power` |
+| Demo readout, `activated_14d` | +2.31 pp CUPED lift, 95% CI +0.54 to +4.07 pp | +2.28 pp true built-in effect |
+| Eval set | 100 regenerated datasets of 20,000 users; demo dataset 20,000 users, 749k events | |
+| Runtime | about 1.5-2.5 s wall time per CLI command, including interpreter start, on a 2-vCPU machine (from `docs/PRODUCT.md`) | p50/p95 not measured |
+| Cost per 1k requests | not applicable: runs locally, no paid API or service | |
+| Tests | 112, run in CI on Python 3.11 and 3.12 | |
 
 ## Headline result
 
@@ -210,6 +226,42 @@ A/A peeking (2,000 sims, 30 daily looks): naive false-positive rate 28.4%, mSPRT
 - **Peeking.** Checking a fixed-horizon p-value every day for 30 days produces a false positive in 28% of A/A tests; the mSPRT guardrail holds it under 1%.
 - **Unit tests** check each statistic against scipy or hand calculations, CUPED interval coverage by simulation on skewed counts, SRM detection on a generator that drops treatment logs, and that an A/A dataset does not produce a SHIP decision. Tests are deterministic and never use the network.
 
+## Where it fails
+
+Read these before trusting a readout. Slices come from the 100-seed validation in `docs/validation/` unless noted.
+
+**Statistical and data limits**
+
+| Failure | Evidence | Tracked |
+| --- | --- | --- |
+| A real primary effect often comes back INCONCLUSIVE at the bundled size | 32 of 100 seeds; power 68%, MDE 2.59 pp at 4,916 users per arm, for a true +2.28 pp effect | [#6](https://github.com/seanmcrae/plg-metrics/issues/6) |
+| Secondary metrics are badly underpowered | power 20% (`active_days_28d`), 17% (`paid_28d`); a real secondary effect is usually missed | [#6](https://github.com/seanmcrae/plg-metrics/issues/6) |
+| CUPED does little for the binary primary | SE ratio 0.979 (0.889 on active days); 4.1% variance reduction in the seed-7 readout | [#6](https://github.com/seanmcrae/plg-metrics/issues/6) |
+| `active_days_28d` estimates run below the true effect | mean bias -0.027 raw and -0.031 CUPED on a 0.175 effect (about 17%, roughly 2.3 SE), while coverage still reads 93% | [#5](https://github.com/seanmcrae/plg-metrics/issues/5) |
+| Primary CUPED coverage sits slightly under nominal | 92% versus 95%, within Monte Carlo error at 100 seeds | |
+| Only synthetic, defect-free events have been tested | no duplicates, bots, late events, or unassigned users in the generator; no data-quality checks run before analysis | [#7](https://github.com/seanmcrae/plg-metrics/issues/7) |
+
+**Design and scaffolding limits**
+
+| Failure | Evidence |
+| --- | --- |
+| Activation search ranks correlations, not causes | `session_start >= 3 in first 7d` tops the list (F1 0.759) because early activity predicts later activity |
+| A short funnel window under-reports conversion | 2.2% reach `subscribe` within 14 days versus 4.8% within 112 days on the demo data |
+| Users are the only unit | no account-level analysis or cluster-robust errors for multi-user workspaces |
+| One machine | DuckDB in-process; fine for tens of millions of events, not a warehouse-scale table |
+
+**Considered and rejected.** O'Brien-Fleming alpha spending for the peeking guardrail. It has more power when the look schedule is fixed in advance and honored, but teams check dashboards whenever they like, so the repo uses mSPRT, which needs no pre-committed number of looks (`docs/PRODUCT.md`, trade-offs). The cost is visible in the demo: the always-valid test first allows a stop on look 37 of 42.
+
+## Limitations
+
+- All results are on synthetic data; see the failure table above for what that leaves untested.
+- Signups in the synthetic world stop after week 12, so the last weeks of the stickiness and north-star series reflect an ageing user base with no new acquisition, not product decline.
+- Activation search output is a shortlist of correlations; adopting a rule as the activation metric needs judgement and then an experiment.
+- Users are the unit everywhere. Account-level (workspace) analysis and cluster-robust errors for multi-user accounts are not implemented.
+- Delta-method intervals are used for relative lift; for very small baselines a Fieller or bootstrap interval would be safer.
+- CUPED intervals treat theta as known. At thousands of users per arm the effect on coverage is negligible; on very small samples it is not.
+- DuckDB runs in-process on one machine. That is comfortable for tens of millions of events, not for a warehouse-scale event table.
+
 ## Design decisions
 
 - **Funnel semantics are explicit.** Entry is the first occurrence of step 0 in the entry period; each later step must occur at or after the previous matched step and within the window measured from entry. Matching the earliest qualifying event is optimal, so the funnel never undercounts a user who had a valid ordered path. Tied timestamps satisfy ordering because batch loggers often stamp consecutive events identically. All of these cases have unit tests.
@@ -259,18 +311,13 @@ docs/                               PRODUCT.md, architecture source, charts, val
 tests/                              unit and integration tests
 ```
 
-## Limitations
-
-- Signups in the synthetic world stop after week 12, so the last weeks of the stickiness and north-star series reflect an ageing user base with no new acquisition, not product decline.
-- Activation search ranks correlations. `session_start >= 3` tops the list because early activity predicts later activity; deciding which behavior onboarding can actually move needs judgement and then an experiment.
-- Users are the unit everywhere. Account-level (workspace) analysis and cluster-robust errors for multi-user accounts are not implemented.
-- Delta-method intervals are used for relative lift; for very small baselines a Fieller or bootstrap interval would be safer.
-- CUPED intervals treat theta as known. At thousands of users per arm the effect on coverage is negligible; on very small samples it is not.
-- DuckDB runs in-process on one machine. That is comfortable for tens of millions of events, not for a warehouse-scale event table.
-
 ## Roadmap
 
 Problem framing, users, success metrics, trade-offs, and the now / next / later roadmap (warehouse connectors, a metric layer) are in [docs/PRODUCT.md](docs/PRODUCT.md), also rendered on the [docs site](https://seanmcrae.github.io/plg-metrics/product.html).
+
+## How this was built
+
+Code was written with AI coding agents under my direction. I set the problem, success metrics and eval gates, and decided what shipped. Every number here comes from the committed eval scripts (`make validate` and the demo commands); CI reruns the tests, the demo readout, and the site build on every push.
 
 ## Contributing
 
